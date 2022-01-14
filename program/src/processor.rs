@@ -24,9 +24,9 @@ impl Processor {
             .map_err(|_| ProgramError::InvalidInstructionData)?;
 
         match instruction {
-            ExchangeBoothInstruction::InititializeExchangeBooth { } => {
+            ExchangeBoothInstruction::InititializeExchangeBooth { fee } => {
                 msg!("Instruction: InitializeExchangeBooth");
-                initialize_exchange_booth::process(program_id, accounts)?;
+                initialize_exchange_booth::process(program_id, accounts, instruction_data, fee)?;
             }
             ExchangeBoothInstruction::Deposit { } => {
                 msg!("Instruction: Deposit");

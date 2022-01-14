@@ -30,7 +30,6 @@ def get_rent(size):
     lamports = client.get_minimum_balance_for_rent_exemption(size)["result"]
     return lamports
 
-
 def send_transaction(tx, signers):
     client = Client(RPC_URL)
     result = client.send_transaction(
@@ -40,7 +39,6 @@ def send_transaction(tx, signers):
     )
     tx_hash = result["result"]
     return client.confirm_transaction(tx_hash, commitment=Confirmed)
-
 
 def create_test_mint(
     authority: Keypair,
