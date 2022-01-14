@@ -10,10 +10,14 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 
-import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  Token,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 
-const SPL_TOKEN_ACCOUNT_PROGRAM_ID = new PublicKey(
-  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+const ebProgramID = new PublicKey(
+  "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
 );
 
 // Quick changing to dev and local nets
@@ -138,6 +142,58 @@ const initTokens = async (
   ];
 };
 
+const initializeVaults = async (
+  connection: Connection,
+  adminWallet: Keypair,
+  mint_a: Token,
+  mint_b: Token,
+  eb_pda: PublicKey
+) => {
+  // get the two vaults:
+  const vault_a_key = await Token.getAssociatedTokenAddress(
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint_a.publicKey,
+    eb_pda,
+    true
+  );
+  const vault_b_key = await Token.getAssociatedTokenAddress(
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint_b.publicKey,
+    eb_pda,
+    true
+  );
+
+  const vault_a_account_ix = await Token.createAssociatedTokenAccountInstruction(
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint_a.publicKey,
+    vault_a_key,
+    eb_pda,
+    adminWallet.publicKey
+  );
+
+  const vault_b_account_ix = await Token.createAssociatedTokenAccountInstruction(
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint_b.publicKey,
+    vault_b_key,
+    eb_pda,
+    adminWallet.publicKey
+  );
+
+  const tx = new Transaction();
+  tx.add(vault_a_account_ix).add(vault_b_account_ix);
+
+  let txid = await sendAndConfirmTransaction(connection, tx, [adminWallet], {
+    skipPreflight: true,
+    preflightCommitment: "confirmed",
+    commitment: "confirmed",
+  });
+  console.log(`https://explorer.solana.com/tx/${txid}?cluster=devnet`);
+};
+
 const main = async () => {
   const connection = new Connection(CONNECTION);
 
@@ -148,7 +204,6 @@ const main = async () => {
   // Note: the admin IS the mint authority in this exercise
 
   // Creating the token and assigning the token to an acc
-
   await initialAirdrop(connection, adminWallet, bobWallet);
 
   const [
@@ -158,6 +213,79 @@ const main = async () => {
     admin_token_b_account,
     bob_token_a_account,
   ] = await initTokens(connection, adminWallet, bobWallet);
+
+  // After here we have the mints, we have the token accounts, all we need left are the vaults
+  // In order to initialize the vaults, we need to get the PDA for the exchange booth.
+  // This is because we need to set the PDA as the authority of the vaults
+
+  let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("eb_pda"),
+      adminWallet.publicKey.toBuffer(),
+      (mint_a as Token).publicKey.toBuffer(),
+      (mint_b as Token).publicKey.toBuffer(),
+    ],
+    ebProgramID
+  );
+
+  await initializeVaults(
+    connection,
+    adminWallet,
+    mint_a as Token,
+    mint_b as Token,
+    ebPDA
+  );
+
+  // Now we have initialized the two vaults!
+
+  // Creating the Exchange Booth Instruction
+  const ExchangeBoothKeys = [
+    {
+      pubkey: adminWallet.publicKey,
+      isSigner: true,
+      isWritable: false,
+    },
+    {
+      pubkey: vault_aPubkey,
+      isSigner: false,
+      isWritable: true,
+    },
+    {
+      pubkey: vault_bPubkey,
+      isSigner: false,
+      isWritable: true,
+    },
+    {
+      pubkey: ebPDA,
+      isSigner: false,
+      isWritable: true,
+    },
+    {
+      pubkey: (mint_a as Token).publicKey,
+      isSigner: false,
+      isWritable: false,
+    },
+    {
+      pubkey: (mint_b as Token).publicKey,
+      isSigner: false,
+      isWritable: false,
+    },
+    {
+      pubkey: oraclePubkey,
+      isSigner: false,
+      isWritable: false,
+    },
+    {
+      pubkey: TOKEN_PROGRAM_ID,
+      isSigner: false,
+      isWritable: false,
+    },
+    {
+      pubkey: SystemProgram.programId,
+      isSigner: false,
+      isWritable: false,
+    },
+  ];
 };
 
 main();
