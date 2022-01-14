@@ -27,11 +27,13 @@ const DEV_NET = clusterApiUrl("devnet");
 const CONNECTION = LOCAL_NET;
 
 // Necessary constants:
-const oracleKey = new PublicKey(/* TODO add*/);
+const oracleKey = new PublicKey(
+  "3844f0b2b079e771ef0bade112c827917532fe3f45cf3d7bc24fe8cd255caab9"
+); // This points to the actual buffer account where the oracle data is held
 const oracleProgramId = new PublicKey(
   "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
 );
-const ebProgramId = new PublicKey(/* TODO here*/);
+const ebProgramId = new PublicKey();
 
 const initialAirdrop = async (
   connection: Connection,
@@ -285,21 +287,6 @@ const main = async () => {
       isWritable: false,
     },
     {
-      pubkey: vault_a_key,
-      isSigner: false,
-      isWritable: true,
-    },
-    {
-      pubkey: vault_b_key,
-      isSigner: false,
-      isWritable: true,
-    },
-    {
-      pubkey: ebPDA,
-      isSigner: false,
-      isWritable: true,
-    },
-    {
       pubkey: (mint_a as Token).publicKey,
       isSigner: false,
       isWritable: false,
@@ -310,7 +297,22 @@ const main = async () => {
       isWritable: false,
     },
     {
+      pubkey: vault_a_key,
+      isSigner: false,
+      isWritable: true,
+    },
+    {
+      pubkey: vault_b_key,
+      isSigner: false,
+      isWritable: true,
+    },
+    {
       pubkey: oracleKey,
+      isSigner: false,
+      isWritable: false,
+    },
+    {
+      pubkey: SystemProgram.programId,
       isSigner: false,
       isWritable: false,
     },
@@ -320,11 +322,13 @@ const main = async () => {
       isWritable: false,
     },
     {
-      pubkey: SystemProgram.programId,
+      pubkey: ebPDA,
       isSigner: false,
-      isWritable: false,
+      isWritable: true,
     },
   ];
 };
 
-main();
+main()
+  .then(() => console.log("Success"))
+  .catch((err) => console.log("oopsie"));

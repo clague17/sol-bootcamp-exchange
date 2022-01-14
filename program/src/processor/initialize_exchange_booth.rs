@@ -22,6 +22,15 @@ use crate::{
 use std::mem::size_of;
 
 
+pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> ProgramResult {
+    if !statement {
+        msg!(msg);
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
+
 pub fn process(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -37,6 +46,7 @@ pub fn process(
     let mint_b = next_account_info(accounts_iter)?;
     let vault_a = next_account_info(accounts_iter)?; // really just a token account for A
     let vault_b = next_account_info(accounts_iter)?; // really just a token account for B
+    let oracle = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
     let eb_ai = next_account_info(accounts_iter)?;
@@ -50,6 +60,46 @@ pub fn process(
             mint_b.key.as_ref()
         ],
         program_id
+    );
+
+    assert_with_msg(
+        eb_pda == *eb_ai.key, 
+        ProgramError::IncorrectProgramId, 
+        "Incorrect Exchange Booth account input"
+    );
+
+    // now we can check the pdas are correct for the vaults
+
+    let (vault_a_pda, vault_a_bump) = Pubkey::find_program_address(
+        &[
+            b"vault_a",
+            admin.key.as_ref(),
+            mint_a.key.as_ref(),
+            eb_ai.key.as_ref()
+        ],
+        program_id
+    );
+
+    let (vault_b_pda, vault_b_bump) = Pubkey::find_program_address(
+        &[
+            b"vault_b",
+            admin.key.as_ref(),
+            mint_b.key.as_ref(),
+            eb_ai.key.as_ref()
+        ],
+        program_id
+    );
+
+    assert_with_msg(
+        *vault_a.key == vault_a_pda, 
+        ProgramError::IncorrectProgramId, 
+        "Incorrect Vault"
+    );
+
+    assert_with_msg(
+        *vault_b.key == vault_b_pda, 
+        ProgramError::IncorrectProgramId, 
+        "Incorrect Vault"
     );
 
     // allocating exchange booth: 
@@ -72,79 +122,17 @@ pub fn process(
             ]
         ]
     )?;
-    
-    // Find the vault PDAs
-    let (vault_a_pda, vault_a_bump) = Pubkey::find_program_address(
-        &[
-            b"vault_a_pda",
-            admin.key.as_ref(),
-            mint_a.key.as_ref(),
-            eb_ai.key.as_ref()
-        ],
-        program_id
-    );
-
-    let (vault_b_pda, vault_b_bump) = Pubkey::find_program_address(
-        &[
-            b"vault_b_pda",
-            admin.key.as_ref(),
-            mint_b.key.as_ref(),
-            eb_ai.key.as_ref()
-        ],
-        program_id
-    );
-
-    // allocating vault_a
-    invoke_signed(
-        &system_instruction::create_account(
-            admin.key, // usually just the fee payer
-            vault_a.key,
-            Rent::get()?.minimum_balance(token_account_size),
-            token_account_size.try_into().unwrap(),
-            program_id),
-        &[admin.clone(), vault_a.clone(), system_program.clone()],
-        &[
-            &[
-                b"vault_a_pda", 
-                admin.key.as_ref(), 
-                vault_a.key.as_ref(), 
-                &[vault_a_bump]
-            ]
-        ],
-    )?;
-
-    // allocating vault_b
-    invoke_signed(
-        &system_instruction::create_account(
-            admin.key, // usually just the fee payer
-            vault_b.key,
-            Rent::get()?.minimum_balance(token_account_size),
-            token_account_size.try_into().unwrap(),
-            program_id),
-        &[admin.clone(), vault_b.clone(), system_program.clone()],
-        &[
-            &[
-                b"vault_a_pda", 
-                admin.key.as_ref(), 
-                vault_b.key.as_ref(), 
-                &[vault_b_bump]
-            ]
-        ],
-    )?;
-
-    // initializing and allocating a vault_a token account
-    let vault_a_token_account_ix = spl_token::instruction::initialize_account(
-        token_program.key, // usually just the fee payer
-        &vault_a_pda,
-        mint_a.key,
-        program_id
-    );
-
-
-    // Find program accounts
-    // invoke program accounts
 
     // finally serialize the struct into the space allocated by the system instruction
+    let mut eb = ExchangeBooth {
+        admin: *admin.key,
+        vaultA: *vault_a.key,
+        vaultB:  *vault_b.key,
+        oracle: *oracle.key,
+        fee: fee
+    };
+
+    eb.serialize(&mut *eb_ai.data.borrow_mut());
 
     Ok(())
 }
