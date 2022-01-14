@@ -19,11 +19,19 @@ import {
 const ebProgramID = new PublicKey(
   "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
 );
+const { BN } = require("bn.js");
 
 // Quick changing to dev and local nets
 const LOCAL_NET = "http://127.0.0.1:8899";
 const DEV_NET = clusterApiUrl("devnet");
 const CONNECTION = LOCAL_NET;
+
+// Necessary constants:
+const oracleKey = new PublicKey(/* TODO add*/);
+const oracleProgramId = new PublicKey(
+  "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
+);
+const ebProgramId = new PublicKey(/* TODO here*/);
 
 const initialAirdrop = async (
   connection: Connection,
@@ -165,7 +173,7 @@ const initializeVaults = async (
     true
   );
 
-  const vault_a_account_ix = await Token.createAssociatedTokenAccountInstruction(
+  const vault_a_account_ix = Token.createAssociatedTokenAccountInstruction(
     ASSOCIATED_TOKEN_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
     mint_a.publicKey,
@@ -174,7 +182,7 @@ const initializeVaults = async (
     adminWallet.publicKey
   );
 
-  const vault_b_account_ix = await Token.createAssociatedTokenAccountInstruction(
+  const vault_b_account_ix = Token.createAssociatedTokenAccountInstruction(
     ASSOCIATED_TOKEN_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
     mint_b.publicKey,
@@ -191,7 +199,38 @@ const initializeVaults = async (
     preflightCommitment: "confirmed",
     commitment: "confirmed",
   });
-  console.log(`https://explorer.solana.com/tx/${txid}?cluster=devnet`);
+  console.log(
+    `Vault Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
+  );
+
+  return [vault_a_key, vault_b_key];
+};
+
+const createOracle = async (connection: Connection, adminWallet: Keypair) => {
+  console.log("Creating the Oracle ...");
+  const echoBuffer = new Keypair();
+
+  // Now we must specify the data that the oracle will hold
+  const tokenAmountA = Buffer.from(new Uint8Array(new BN(1).toArray("le", 8)));
+  const tokenAmountB = Buffer.from(new Uint8Array(new BN(2).toArray("le", 8))); // the ratio is gonna be half of A to B, so A is worth twice as much as B
+
+  // create the data
+  let price_data = Buffer.concat([tokenAmountA, tokenAmountB]);
+
+  // create the account
+  let createIx = SystemProgram.createAccount({
+    fromPubkey: adminWallet.publicKey,
+    newAccountPubkey: echoBuffer.publicKey,
+    /** Amount of lamports to transfer to the created account */
+    lamports: await connection.getMinimumBalanceForRentExemption(
+      price_data.length
+    ),
+    /** Amount of space in bytes to allocate to the created account */
+    space: price_data.length,
+    /** Public key of the program to assign as the owner of the created account */
+    programId: oracleProgramId,
+  });
+  // send the transaction, keeping track of that oracle key
 };
 
 const main = async () => {
@@ -228,7 +267,7 @@ const main = async () => {
     ebProgramID
   );
 
-  await initializeVaults(
+  const [vault_a_key, vault_b_key] = await initializeVaults(
     connection,
     adminWallet,
     mint_a as Token,
@@ -246,12 +285,12 @@ const main = async () => {
       isWritable: false,
     },
     {
-      pubkey: vault_aPubkey,
+      pubkey: vault_a_key,
       isSigner: false,
       isWritable: true,
     },
     {
-      pubkey: vault_bPubkey,
+      pubkey: vault_b_key,
       isSigner: false,
       isWritable: true,
     },
@@ -271,7 +310,7 @@ const main = async () => {
       isWritable: false,
     },
     {
-      pubkey: oraclePubkey,
+      pubkey: oracleKey,
       isSigner: false,
       isWritable: false,
     },

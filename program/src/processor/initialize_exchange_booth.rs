@@ -135,7 +135,7 @@ pub fn process(
     // initializing and allocating a vault_a token account
     let vault_a_token_account_ix = spl_token::instruction::initialize_account(
         token_program.key, // usually just the fee payer
-        vault_a_pda,
+        &vault_a_pda,
         mint_a.key,
         program_id
     );
