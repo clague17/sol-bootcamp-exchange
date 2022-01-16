@@ -16,7 +16,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 
-const ebProgramID = new PublicKey(
+const ORACLE_PROGRAM_ID = new PublicKey(
   "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
 );
 const { BN } = require("bn.js");
@@ -27,13 +27,16 @@ const DEV_NET = clusterApiUrl("devnet");
 const CONNECTION = LOCAL_NET;
 
 // Necessary constants:
-const oracleKey = new PublicKey(
-  "3844f0b2b079e771ef0bade112c827917532fe3f45cf3d7bc24fe8cd255caab9"
-); // This points to the actual buffer account where the oracle data is held
+const oracleKey = new PublicKey("AE3nhQH1hNYA198w5yWoMzxtmyU4QD5Pad3dCgdpyPQN"); // This points to the actual buffer account where the oracle data is held
 const oracleProgramId = new PublicKey(
   "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
 );
-const ebProgramId = new PublicKey();
+const EB_PROGRAM_ID = new PublicKey(
+  "29e799E2EERqux5qDh5YHzXNdTKa3tBbjXSMHx1g5DL2"
+);
+
+const SWAP_FEE = 0.2; // will definitely have to play with the decimals on this
+const INSTRUCTION_IDX = 0; // The instruction that you want the rust program to run
 
 const initialAirdrop = async (
   connection: Connection,
@@ -46,8 +49,9 @@ const initialAirdrop = async (
   console.log("Airdropping 1 sol to admin...");
   var adminAirdropSignature = await connection.requestAirdrop(
     adminWallet.publicKey,
-    LAMPORTS_PER_SOL
+    2e9
   );
+  await connection.confirmTransaction(adminAirdropSignature, "finalized");
 
   console.log("Airdropping 1 sol to bob...");
 
@@ -55,10 +59,20 @@ const initialAirdrop = async (
   // Generate Bob wallet keypair
   var bobAirdropSignature = await connection.requestAirdrop(
     bobWallet.publicKey,
-    LAMPORTS_PER_SOL
+    2e9
+  );
+  await connection.confirmTransaction(bobAirdropSignature, "finalized");
+
+  console.log(
+    "ADMIN balance: ",
+    await connection.getBalance(adminWallet.publicKey)
+  );
+  console.log(
+    "BOB balance: ",
+    await connection.getBalance(adminWallet.publicKey)
   );
 
-  console.log("Airdrop complete :)");
+  console.log("Airdrop complete :)\n");
 };
 
 // this functioni will create mint_a and mint_b.
@@ -73,6 +87,15 @@ const initTokens = async (
   // mint_a with the mint authority as the admin
 
   console.log("Creating Mints...");
+  console.log(
+    "ADMIN balance: ",
+    await connection.getBalance(adminWallet.publicKey)
+  );
+  console.log(
+    "BOB balance: ",
+    await connection.getBalance(adminWallet.publicKey)
+  );
+
   const mint_a = await Token.createMint(
     connection,
     adminWallet,
@@ -81,6 +104,8 @@ const initTokens = async (
     6, // 6 decimals
     TOKEN_PROGRAM_ID
   );
+
+  console.log("Created MintA...");
 
   const mint_b = await Token.createMint(
     connection,
@@ -91,12 +116,14 @@ const initTokens = async (
     TOKEN_PROGRAM_ID
   );
 
+  console.log("Created MintB...");
+
   // Now that we have the mints, we need to find a place to put generated tokens.
   // This place would be the associated token accounts for these wallets
 
   // Get the token account of the adminWallett olana address, if it does not exist, create it
 
-  console.log("Creating associated token accounts...");
+  console.log("Creating ADMIN associated token accounts...");
   const admin_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
     adminWallet.publicKey
   );
@@ -106,7 +133,7 @@ const initTokens = async (
   );
 
   //get the token account of the bobWallet Solana address, if it does not exist, create it
-  console.log("Creating associated token accounts...");
+  console.log("Creating BOB associated token accounts...");
   const bob_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
     adminWallet.publicKey
   );
@@ -125,7 +152,7 @@ const initTokens = async (
   // mint a token_b into adminTokenAccount
   await mint_b.mintTo(
     admin_token_b_account.address,
-    adminWallet.publicKey,
+    adminWallet.publicKey, // The authority is the owner of the mint account, destination pubkey doesn't matter
     [],
     1000000000
   );
@@ -135,13 +162,13 @@ const initTokens = async (
   // mint a token a into bob
   await mint_a.mintTo(
     bob_token_a_account.address,
-    bobWallet.publicKey,
+    adminWallet.publicKey, // The authority is the owner of the mint account, destination pubkey doesn't matter
     [],
     LAMPORTS_PER_SOL
   );
 
   // Now bob can transfer token_a for token_b using this exchange booth!
-  console.log("Successfully minted tokens :)");
+  console.log("Successfully minted tokens :)\n");
 
   return [
     mint_a,
@@ -266,7 +293,7 @@ const main = async () => {
       (mint_a as Token).publicKey.toBuffer(),
       (mint_b as Token).publicKey.toBuffer(),
     ],
-    ebProgramID
+    EB_PROGRAM_ID
   );
 
   const [vault_a_key, vault_b_key] = await initializeVaults(
@@ -327,8 +354,26 @@ const main = async () => {
       isWritable: true,
     },
   ];
+
+  let initExchangeBooth_ix = new TransactionInstruction({
+    keys: ExchangeBoothKeys,
+    programId: EB_PROGRAM_ID,
+    data: Buffer.from([INSTRUCTION_IDX, SWAP_FEE]),
+  });
+
+  const tx = new Transaction();
+  tx.add(initExchangeBooth_ix);
+
+  let txid = await sendAndConfirmTransaction(connection, tx, [adminWallet], {
+    skipPreflight: true,
+    preflightCommitment: "confirmed",
+    commitment: "confirmed",
+  });
+  console.log(
+    `Init Exchange Booth Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
+  );
 };
 
 main()
   .then(() => console.log("Success"))
-  .catch((err) => console.log("oopsie"));
+  .catch((err) => console.log("oopsie:", err));
