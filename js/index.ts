@@ -8,6 +8,7 @@ import {
   PublicKey,
   TransactionInstruction,
   LAMPORTS_PER_SOL,
+  AccountInfo,
 } from "@solana/web3.js";
 
 import {
@@ -17,6 +18,11 @@ import {
 } from "@solana/spl-token";
 
 import { Admin, Bob } from "./util";
+import { writeFile, readFile } from "fs/promises";
+import { getMint } from "./util";
+
+// Debug niceties
+const initTokensFilePath = "../debug_utils/init_token_accounts.json";
 
 const ORACLE_PROGRAM_ID = new PublicKey(
   "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
@@ -40,7 +46,7 @@ const EB_PROGRAM_ID = new PublicKey(
 const SWAP_FEE = 0.2; // will definitely have to play with the decimals on this
 const INSTRUCTION_IDX = 0; // The instruction that you want the rust program to run
 
-const initialAirdrop = async (
+const initialAirDrop = async (
   connection: Connection,
   adminWallet: Keypair,
   bobWallet: Keypair
@@ -84,7 +90,8 @@ const initialAirdrop = async (
 const initTokens = async (
   connection: Connection,
   adminWallet: Keypair,
-  bobWallet: Keypair
+  bobWallet: Keypair,
+  debug: boolean = false
 ) => {
   // mint_a with the mint authority as the admin
 
@@ -98,7 +105,7 @@ const initTokens = async (
     await connection.getBalance(adminWallet.publicKey)
   );
 
-  const mint_a = await Token.createMint(
+  let mint_a = await Token.createMint(
     connection,
     adminWallet,
     adminWallet.publicKey,
@@ -109,7 +116,7 @@ const initTokens = async (
 
   console.log("Created MintA...");
 
-  const mint_b = await Token.createMint(
+  let mint_b = await Token.createMint(
     connection,
     adminWallet,
     adminWallet.publicKey,
@@ -126,17 +133,17 @@ const initTokens = async (
   // Get the token account of the adminWallett olana address, if it does not exist, create it
 
   console.log("Creating ADMIN associated token accounts...");
-  const admin_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
+  let admin_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
     adminWallet.publicKey
   );
 
-  const admin_token_b_account = await mint_b.getOrCreateAssociatedAccountInfo(
+  let admin_token_b_account = await mint_b.getOrCreateAssociatedAccountInfo(
     bobWallet.publicKey
   );
 
   //get the token account of the bobWallet Solana address, if it does not exist, create it
   console.log("Creating BOB associated token accounts...");
-  const bob_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
+  let bob_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
     adminWallet.publicKey
   );
 
@@ -172,6 +179,25 @@ const initTokens = async (
   // Now bob can transfer token_a for token_b using this exchange booth!
   console.log("Successfully minted tokens :)\n");
 
+  //write all this info in case you want to debug and use explorer to monitor testing
+  if (debug) {
+    var data = {
+      mint_a: mint_a.publicKey.toBase58(),
+      mint_b: mint_b.publicKey.toBase58(),
+      admin_token_a_account: admin_token_a_account.address.toBase58(),
+      admin_token_b_account: admin_token_b_account.address.toBase58(),
+      bob_token_a_account: bob_token_a_account.address.toBase58(),
+    };
+
+    writeFile(initTokensFilePath, JSON.stringify(data))
+      .then(() =>
+        console.log(`Wrote Token Accounts to ${initTokensFilePath}\n`)
+      )
+      .catch((err) =>
+        console.log(`Error writing Token Accounts to ${initTokensFilePath}\n`)
+      );
+  }
+
   return [
     mint_a,
     mint_b,
@@ -189,14 +215,14 @@ const initializeVaults = async (
   eb_pda: PublicKey
 ) => {
   // get the two vaults:
-  const vault_a_key = await Token.getAssociatedTokenAddress(
+  let vault_a_key = await Token.getAssociatedTokenAddress(
     ASSOCIATED_TOKEN_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
     mint_a.publicKey,
     eb_pda,
     true
   );
-  const vault_b_key = await Token.getAssociatedTokenAddress(
+  let vault_b_key = await Token.getAssociatedTokenAddress(
     ASSOCIATED_TOKEN_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
     mint_b.publicKey,
@@ -204,7 +230,7 @@ const initializeVaults = async (
     true
   );
 
-  const vault_a_account_ix = Token.createAssociatedTokenAccountInstruction(
+  let vault_a_account_ix = Token.createAssociatedTokenAccountInstruction(
     ASSOCIATED_TOKEN_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
     mint_a.publicKey,
@@ -213,7 +239,7 @@ const initializeVaults = async (
     adminWallet.publicKey
   );
 
-  const vault_b_account_ix = Token.createAssociatedTokenAccountInstruction(
+  let vault_b_account_ix = Token.createAssociatedTokenAccountInstruction(
     ASSOCIATED_TOKEN_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
     mint_b.publicKey,
@@ -222,7 +248,7 @@ const initializeVaults = async (
     adminWallet.publicKey
   );
 
-  const tx = new Transaction();
+  let tx = new Transaction();
   tx.add(vault_a_account_ix).add(vault_b_account_ix);
 
   let txid = await sendAndConfirmTransaction(connection, tx, [adminWallet], {
@@ -299,6 +325,19 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
 };
 
 const main = async () => {
+  var args = process.argv.slice(2);
+  const shouldAirdrop = parseInt(args[0]);
+  const shouldInitTokens = parseInt(args[1]);
+  const debug = parseInt(args[2]);
+  // const echo = args[1];
+  // const price = parseInt(args[2]);
+  console.log(
+    `Received args:
+    shouldAirdrop: ${shouldAirdrop == 1}
+    shouldInitTokens: ${shouldInitTokens == 1}
+    debug: ${debug == 1}\n`
+  );
+
   const connection = new Connection(CONNECTION);
 
   var adminWallet = Admin;
@@ -308,7 +347,31 @@ const main = async () => {
   // Note: the admin IS the mint authority in this exercise
 
   // Creating the token and assigning the token to an acc
-  await initialAirdrop(connection, adminWallet, bobWallet);
+  if (shouldAirdrop === 1) {
+    await initialAirDrop(connection, adminWallet, bobWallet);
+    return;
+  }
+
+  type InitTokensData = {
+    mint_a: Token;
+    mint_b: Token;
+    admin_token_a_account: AccountInfo<any>; // any here is the type T of the data the account holds
+    admin_token_b_account: AccountInfo<any>;
+    bob_token_a_account: AccountInfo<any>;
+  };
+
+  // let tokenData = shouldInitTokens
+  //   ? await initTokens(connection, adminWallet, bobWallet, debug == 1)
+  //   : await readFile(initTokensFilePath, "utf8")
+  //       .then((res) => {
+  //         let token_data = JSON.parse(res);
+  //         token_data["mint_a"] = getMint(connection, token_data.mint_a);
+  //         token_data["mint_b"] = getMint(connection, token_data.mint_a);
+  //         return token_data;
+  //       })
+  //       .catch((err) =>
+  //         console.log(`Problem reading file at ${initTokensFilePath}: `, err)
+  //       );
 
   const [
     mint_a,
@@ -316,11 +379,11 @@ const main = async () => {
     admin_token_a_account,
     admin_token_b_account,
     bob_token_a_account,
-  ] = await initTokens(connection, adminWallet, bobWallet);
-
+  ] = await initTokens(connection, adminWallet, bobWallet, debug == 1);
   // After here we have the mints, we have the token accounts, all we need left are the vaults
   // In order to initialize the vaults, we need to get the PDA for the exchange booth.
   // This is because we need to set the PDA as the authority of the vaults
+  console.log("mint_a", mint_a);
 
   let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
     [
@@ -335,8 +398,8 @@ const main = async () => {
   const [vault_a_key, vault_b_key] = await initializeVaults(
     connection,
     adminWallet,
-    mint_a as Token,
-    mint_b as Token,
+    mint_a,
+    mint_b,
     ebPDA
   );
 
