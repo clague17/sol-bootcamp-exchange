@@ -21,7 +21,6 @@ use crate::{
 };
 use std::mem::size_of;
 
-
 pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> ProgramResult {
     if !statement {
         msg!(msg);
@@ -48,7 +47,7 @@ pub fn process(
     let vault_b = next_account_info(accounts_iter)?; // really just a token account for B
     let oracle = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
-    let token_program = next_account_info(accounts_iter)?;
+    let token_program = next_account_info(accounts_iter)?; // Dont actually need this since Initializing the mints was done on the frontend
     let eb_ai = next_account_info(accounts_iter)?;
    
     // find the exchange booth PDA

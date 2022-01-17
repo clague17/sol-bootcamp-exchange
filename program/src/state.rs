@@ -10,3 +10,9 @@ pub struct ExchangeBooth {
     pub oracle: Pubkey, // Then we're gonna read that oracle price in
     pub fee: u8,
 }
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub struct ExchangeRate {
+    pub a_to_b: f64,
+    pub b_to_a: f64
+}
