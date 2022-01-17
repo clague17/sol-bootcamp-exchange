@@ -198,13 +198,7 @@ const initTokens = async (
       );
   }
 
-  return [
-    mint_a,
-    mint_b,
-    admin_token_a_account,
-    admin_token_b_account,
-    bob_token_a_account,
-  ];
+  return [mint_a, mint_b];
 };
 
 const initializeVaults = async (
@@ -327,14 +321,13 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
 const main = async () => {
   var args = process.argv.slice(2);
   const shouldAirdrop = parseInt(args[0]);
-  const shouldInitTokens = parseInt(args[1]);
-  const debug = parseInt(args[2]);
+  const debug = parseInt(args[1]);
+  // const shouldInitTokens = parseInt(args[1]);
   // const echo = args[1];
   // const price = parseInt(args[2]);
   console.log(
     `Received args:
     shouldAirdrop: ${shouldAirdrop == 1}
-    shouldInitTokens: ${shouldInitTokens == 1}
     debug: ${debug == 1}\n`
   );
 
@@ -373,24 +366,22 @@ const main = async () => {
   //         console.log(`Problem reading file at ${initTokensFilePath}: `, err)
   //       );
 
-  const [
-    mint_a,
-    mint_b,
-    admin_token_a_account,
-    admin_token_b_account,
-    bob_token_a_account,
-  ] = await initTokens(connection, adminWallet, bobWallet, debug == 1);
+  const [mint_a, mint_b] = await initTokens(
+    connection,
+    adminWallet,
+    bobWallet,
+    debug == 1
+  );
   // After here we have the mints, we have the token accounts, all we need left are the vaults
   // In order to initialize the vaults, we need to get the PDA for the exchange booth.
   // This is because we need to set the PDA as the authority of the vaults
-  console.log("mint_a", mint_a);
 
   let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
     [
       Buffer.from("eb_pda"),
       adminWallet.publicKey.toBuffer(),
-      (mint_a as Token).publicKey.toBuffer(),
-      (mint_b as Token).publicKey.toBuffer(),
+      mint_a.publicKey.toBuffer(),
+      mint_b.publicKey.toBuffer(),
     ],
     EB_PROGRAM_ID
   );
