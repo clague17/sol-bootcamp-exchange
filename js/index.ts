@@ -16,6 +16,8 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 
+import { Admin, Bob } from "./util";
+
 const ORACLE_PROGRAM_ID = new PublicKey(
   "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
 );
@@ -239,35 +241,69 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
   console.log("Creating the Oracle ...");
   const echoBuffer = new Keypair();
 
-  // Now we must specify the data that the oracle will hold
-  const tokenAmountA = Buffer.from(new Uint8Array(new BN(1).toArray("le", 8)));
-  const tokenAmountB = Buffer.from(new Uint8Array(new BN(2).toArray("le", 8))); // the ratio is gonna be half of A to B, so A is worth twice as much as B
+  console.log("echoBuffer pubKey:", echoBuffer.publicKey.toBase58());
 
-  // create the data
-  let price_data = Buffer.concat([tokenAmountA, tokenAmountB]);
+  // Now we must specify the data that the oracle will hold
+  // const tokenAmountA = Buffer.from(new Uint8Array(new BN(1).toArray("le", 8)));
+  // const tokenAmountB = Buffer.from(new Uint8Array(new BN(2).toArray("le", 8))); // the ratio is gonna be half of A to B, so A is worth twice as much as B
+  // // create the data
+  // let price_data = Buffer.concat([tokenAmountA, tokenAmountB]);
+
+  const ratio = Buffer.from(new Uint8Array(new BN(0.5).toArray("le", 8)));
+  const echoInstruction = Buffer.from(new Uint8Array([0]));
+  const dataLen = Buffer.from(
+    new Uint8Array(new BN(ratio.length).toArray("le", 4))
+  );
 
   // create the account
   let createIx = SystemProgram.createAccount({
     fromPubkey: adminWallet.publicKey,
     newAccountPubkey: echoBuffer.publicKey,
     /** Amount of lamports to transfer to the created account */
-    lamports: await connection.getMinimumBalanceForRentExemption(
-      price_data.length
-    ),
+    lamports: await connection.getMinimumBalanceForRentExemption(ratio.length),
     /** Amount of space in bytes to allocate to the created account */
-    space: price_data.length,
+    space: ratio.length,
     /** Public key of the program to assign as the owner of the created account */
     programId: oracleProgramId,
   });
+
+  let echoIx = new TransactionInstruction({
+    keys: [
+      {
+        pubkey: echoBuffer.publicKey,
+        isSigner: false,
+        isWritable: true,
+      },
+    ],
+    programId: oracleProgramId,
+    data: Buffer.concat([echoInstruction, dataLen, ratio]),
+  });
+
+  const tx = new Transaction();
+  tx.add(createIx).add(echoIx);
+
+  let txid = await sendAndConfirmTransaction(
+    connection,
+    tx,
+    [adminWallet, echoBuffer], //adminWallet is just an arbitrary mint Authority, could be anyone!
+    {
+      skipPreflight: true,
+      preflightCommitment: "confirmed",
+      commitment: "confirmed",
+    }
+  );
+  console.log(
+    `Init Exchange Booth Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
+  );
   // send the transaction, keeping track of that oracle key
 };
 
 const main = async () => {
   const connection = new Connection(CONNECTION);
 
-  var adminWallet = Keypair.generate();
+  var adminWallet = Admin;
 
-  var bobWallet = Keypair.generate(); // bob is the user
+  var bobWallet = Bob; // bob is the user
   // TODO: replace this with a phantom wallet!
   // Note: the admin IS the mint authority in this exercise
 
