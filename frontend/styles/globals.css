@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.cta-button {
+  @apply font-bold px-2 text-[16px] rounded-xl w-auto h-[45px];
+}
+
+.connect-wallet-button {
+  @apply text-white bg-gradient-to-l from-indigo-500 to-pink-500 animate-custom-pulse animate-bounce-slow;
+}
