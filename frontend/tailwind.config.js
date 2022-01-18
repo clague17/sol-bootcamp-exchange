@@ -5,6 +5,12 @@ module.exports = {
   ],
   theme: {
     extend: {
+      width: {
+        128: "32rem",
+      },
+      height: {
+        128: "32rem",
+      },
       backgroundSize: {
         200: "200%",
       },
