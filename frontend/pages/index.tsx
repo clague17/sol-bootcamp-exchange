@@ -2,14 +2,12 @@ import Head from "next/head";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import twitterLogo from "../assets/twitter-logo.svg"; // statically load it from Nextjs. The image MUST be in public folder though
-import Pokedex from "../assets/pokedex.png";
 import TokenView from "../components/TokenView";
-import ClassicShoppingCard from "../components/ClassicShoppingCard";
 import GroudonSprite from "../assets/groudon-sprite-motion.gif";
 import KyogreSprite from "../assets/kyogre-sprite-motion.gif";
 import Pokemon from "../components/Pokemon";
-import { Menu, Transition, Listbox } from "@headlessui/react";
-import { CheckIcon, ChevronDownIcon } from "@heroicons/react/solid";
+import { Transition, Listbox } from "@headlessui/react";
+import { ChevronDownIcon } from "@heroicons/react/solid";
 import PokedexBanner from "../assets/pokedex-header.png";
 import TradeButton from "../assets/trade.png";
 
@@ -66,11 +64,13 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState(null);
   const [pokemonA, setPokemonA] = useState(PokemonList[0]);
   const [pokemonB, setPokemonB] = useState(PokemonList[1]);
+  const [isSwapDirection, setIsSwapDirection] = useState(true); // Neccessary for a transition
   const [amountA, setAmountA] = useState(0);
   const [amountB, setAmountB] = useState(0);
 
   const swapTradeDirection = () => {
     console.log("We're swapping directions");
+    setIsSwapDirection(!isSwapDirection);
     // Swap A
     setPokemonA(pokemonB);
     setAmountA(amountB);
@@ -132,111 +132,152 @@ export default function Home() {
 
   const renderSwapContainer = () => {
     return (
-      <div className="flex space-y-8 content-center flex-col h-fit bg-kyogre-gray w-128 max-w-4xl rounded-2xl">
-        <div className="h-[172px] w-[92%] bg-kyogre-blue-light mx-5 px-5 mt-5 py-5 rounded-2xl flex justify-between">
-          {/* The DROPDOWN FOR SWITCHER A */}
-          <Listbox
-            as="div"
-            className="w-fit"
-            value={pokemonA}
-            onChange={setPokemonA}
-          >
-            <Listbox.Button className=" rounded-lg bg-white hover:bg-violet-400 flex items-center">
-              <TokenView {...pokemonA} />
-              <ChevronDownIcon className="h-12" />
-            </Listbox.Button>
-            <Listbox.Options>
-              {PokemonList.filter(
-                (pokemon) => pokemon.name != pokemonA.name
-              ).map((pokemon, idx) => (
-                <Listbox.Option key={idx} value={pokemon} disabled={false}>
-                  {({ active, selected }) => (
-                    <li
-                      className={`${
-                        active
-                          ? "bg-blue-500 text-white rounded-b-lg"
-                          : "bg-kyogre-red text-black rounded-b-lg"
-                      } cursor-default relative z-40 select-none py-2 pl-6 pr-4 `}
-                    >
-                      {selected}
-                      <TokenView {...pokemon} />
-                    </li>
-                  )}
-                </Listbox.Option>
-              ))}
-            </Listbox.Options>
-          </Listbox>
-          {/* The Number input :) */}
-          <div className="flex">
-            <input
-              type="number"
-              min="0"
-              id="amountA"
-              className="amount-input"
-              placeholder="0"
-              value={amountA}
-              onChange={
-                (ev: React.ChangeEvent<HTMLInputElement>): void =>
-                  setAmountA(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
-              }
-              required
-            />
+      <div className="flex justify-center">
+        <div className="flex w-132 space-y-3 flex-col bg-kyogre-blue-light rounded-2xl">
+          <div className="flex md:mx-5 max-h-[163px] py-5 rounded-2xl justify-between">
+            {/* The DROPDOWN FOR SWITCHER A */}
+            <Listbox
+              as="div"
+              className="w-fit"
+              value={pokemonA}
+              onChange={setPokemonA}
+            >
+              {({ open }) => (
+                <>
+                  <Listbox.Button className="rounded-lg bg-white hover:bg-violet-400 flex items-center mx-2 md:mx-5">
+                    <TokenView {...pokemonA} />
+                    <ChevronDownIcon className="h-12" />
+                  </Listbox.Button>
+                  <Transition
+                    show={open}
+                    leave="transition ease-in duration-100"
+                    leaveFrom="opacity-200"
+                    leaveTo="opacity-0"
+                  >
+                    <Listbox.Options static>
+                      {PokemonList.filter(
+                        (pokemon) => pokemon.name != pokemonA.name
+                      ).map((pokemon, idx) => (
+                        <Listbox.Option
+                          key={idx}
+                          value={pokemon}
+                          disabled={false}
+                        >
+                          {({ active, selected }) => (
+                            <li
+                              className={`${
+                                active
+                                  ? "bg-blue-500 text-white rounded-b-lg"
+                                  : "bg-kyogre-red text-black rounded-b-lg"
+                              } cursor-default relative z-40 select-none py-2 mx-2 md:mx-5 pl-6 pr-4 `}
+                            >
+                              {selected}
+                              <TokenView {...pokemon} />
+                            </li>
+                          )}
+                        </Listbox.Option>
+                      ))}
+                    </Listbox.Options>
+                  </Transition>
+                </>
+              )}
+            </Listbox>
+            {/* The Number input :) */}
+            <div className="flex">
+              <input
+                type="number"
+                min="0"
+                id="amountA"
+                className="amount-input"
+                placeholder="0"
+                value={amountA}
+                onChange={
+                  (ev: React.ChangeEvent<HTMLInputElement>): void =>
+                    setAmountA(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
+                }
+                required
+              />
+            </div>
           </div>
-        </div>
-        <button
-          onClick={() => swapTradeDirection()}
-          className="flex w-fit mx-14"
-        >
-          <Image height={100} width={100} src={TradeButton} />
-        </button>
-        <div className="h-[172px] w-[92%] bg-kyogre-blue-light mx-5 my-5 px-5 py-5 rounded-2xl flex justify-between">
-          {/* The DROPDOWN FOR SWITCHER A */}
-          <Listbox
-            as="div"
-            className="w-fit"
-            value={pokemonB}
-            onChange={setPokemonB}
+          <button
+            onClick={() => swapTradeDirection()}
+            className="flex w-fit mx-10 md:mx-16"
           >
-            <Listbox.Button className=" rounded-lg bg-white hover:bg-violet-400 flex items-center">
-              <TokenView {...pokemonB} />
-              <ChevronDownIcon className="h-12" />
-            </Listbox.Button>
-            <Listbox.Options>
-              {PokemonList.filter(
-                (pokemon) => pokemon.name != pokemonB.name
-              ).map((pokemon, idx) => (
-                <Listbox.Option key={idx} value={pokemon} disabled={false}>
-                  {({ active, selected }) => (
-                    <li
-                      className={`${
-                        active
-                          ? "bg-blue-500 text-white rounded-b-lg"
-                          : "bg-kyogre-red text-black rounded-b-lg"
-                      } cursor-default relative z-40 select-none py-2 pl-6 pr-4 `}
-                    >
-                      {selected}
-                      <TokenView {...pokemon} />
-                    </li>
-                  )}
-                </Listbox.Option>
-              ))}
-            </Listbox.Options>
-          </Listbox>
-          {/* The Number input :) */}
-          <div className="flex">
-            <input
-              type="number"
-              min="0"
-              id="amountB"
-              className="amount-input"
-              placeholder="0"
-              value={amountA}
-              onChange={
-                (ev: React.ChangeEvent<HTMLInputElement>): void =>
-                  setAmountB(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
-              }
-              required
+            <Transition
+              show={isShowing}
+              enter="transition-opacity duration-75"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-opacity duration-150"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
             />
+            <Image height={100} width={100} src={TradeButton} />
+          </button>
+          <div className="flex md:mx-5 max-h-[163px] py-5 rounded-2xl justify-between">
+            {/* The DROPDOWN FOR SWITCHER A */}
+            <Listbox
+              as="div"
+              className="w-fit"
+              value={pokemonB}
+              onChange={setPokemonB}
+            >
+              {({ open }) => (
+                <>
+                  <Listbox.Button className="rounded-lg bg-white hover:bg-violet-400 flex items-center mx-2 md:mx-5">
+                    <TokenView {...pokemonB} />
+                    <ChevronDownIcon className="h-12" />
+                  </Listbox.Button>
+                  <Transition
+                    show={open}
+                    leave="transition ease-in duration-100"
+                    leaveFrom="opacity-200"
+                    leaveTo="opacity-0"
+                  >
+                    <Listbox.Options>
+                      {PokemonList.filter(
+                        (pokemon) => pokemon.name != pokemonB.name
+                      ).map((pokemon, idx) => (
+                        <Listbox.Option
+                          key={idx}
+                          value={pokemon}
+                          disabled={false}
+                        >
+                          {({ active, selected }) => (
+                            <li
+                              className={`${
+                                active
+                                  ? "bg-blue-500 text-white rounded-b-lg"
+                                  : "bg-kyogre-red text-black rounded-b-lg"
+                              } cursor-default relative z-40 select-none py-2 mx-2 md:mx-5 pl-6 pr-4 `}
+                            >
+                              {selected}
+                              <TokenView {...pokemon} />
+                            </li>
+                          )}
+                        </Listbox.Option>
+                      ))}
+                    </Listbox.Options>
+                  </Transition>
+                </>
+              )}
+            </Listbox>
+            {/* The Number input :) */}
+            <div className="flex">
+              <input
+                type="number"
+                min="0"
+                id="amountB"
+                className="amount-input"
+                placeholder="0"
+                value={amountA}
+                onChange={
+                  (ev: React.ChangeEvent<HTMLInputElement>): void =>
+                    setAmountB(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
+                }
+                required
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -271,7 +312,8 @@ export default function Home() {
 
   return (
     // I could use kyogre-blue-light for the background or just plain black :'/ i wonder which looks better.
-    <div className="flex flex-col items-center justify-center min-h-screen pt-14 px-20 bg-black overflow-hidden">
+    // The outer container NEEDS to be relative!
+    <div className="relative flex-col items-center justify-between min-h-screen pt-14 px-5 md:px-20 bg-black overflow-hidden">
       <Head>
         <title>pokèDEX</title>
         <link rel="icon" href="/favicon.ico" />
@@ -282,14 +324,14 @@ export default function Home() {
         {!walletAddress && renderNotConnectedContainer()}
       </div>
       {walletAddress && renderSwapContainer()}
-      <footer className="flex items-center justify-center w-full fixed bottom-0 p-0">
+      <footer className="flex items-center justify-center w-full fixed bottom-0 left-0">
         <a
           className="flex items-center justify-center text-white font-bold"
           href={TWITTER_LINK}
           target="_blank"
           rel="noreferrer"
         >
-          <Image alt="Twitter Logo" width={35} src={twitterLogo} />
+          <Image alt="Twitter Logo" width={35} height={35} src={twitterLogo} />
           {`built by @${TWITTER_HANDLE}`}
         </a>
       </footer>

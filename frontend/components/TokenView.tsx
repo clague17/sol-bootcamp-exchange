@@ -7,7 +7,7 @@ import Pokemon from "./Pokemon";
 const TokenView = (pokemon: Pokemon) => {
   return (
     <div className="flex flex-col mx-1 py-2 rounded-lg">
-      <Image src={pokemon.image} />
+      <Image className="" src={pokemon.image} />
       <p className="px-5 pt-2">{pokemon.name}</p>
     </div>
   );
