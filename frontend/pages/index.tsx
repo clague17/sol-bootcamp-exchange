@@ -84,7 +84,7 @@ export default function Home() {
 
   const checkIfWalletIsConnected = async () => {
     try {
-      const { solana } = window;
+      const { solana } = window as any;
 
       if (solana) {
         if (solana.isPhantom) {
@@ -105,7 +105,7 @@ export default function Home() {
    * We will write the logic for this next!
    */
   const connectWallet = async () => {
-    const { solana } = window;
+    const { solana } = window as any; // Have to do this cast, otherwise the typing complains about solana not existing as a property of window :'(
 
     if (solana) {
       const response = await solana.connect();
@@ -258,7 +258,7 @@ export default function Home() {
 
   const tryExchange = async () => {
     let provider = getProvider();
-    let walletAddress = window.solana;
+    let walletAddress = (window as any).solana;
 
     // do something
   };
