@@ -69,8 +69,6 @@ export default function Home() {
   const [amountA, setAmountA] = useState(0);
   const [amountB, setAmountB] = useState(0);
 
-  console.log("Amount A: ", amountA);
-
   const swapTradeDirection = () => {
     console.log("We're swapping directions");
     // Swap A
@@ -135,36 +133,41 @@ export default function Home() {
   const renderSwapContainer = () => {
     return (
       <div className="flex space-y-8 content-center flex-col h-fit bg-kyogre-gray w-128 max-w-4xl rounded-2xl">
-        <div className="h-[50%] w-[92%] bg-kyogre-blue-light mx-5 mt-5 rounded-2xl flex items-center justify-between">
-          <div className="mx-3 my-5 bg-kyogre-blue-dark contents items-center">
-            {/* The DROPDOWN FOR SWITCHER A */}
-            <Listbox value={pokemonA} onChange={setPokemonA}>
-              <Listbox.Button className="ml-2 rounded-lg bg-white hover:bg-violet-400 flex items-center">
-                <TokenView {...pokemonA} />
-                <ChevronDownIcon className="h-12" />
-              </Listbox.Button>
-              <Listbox.Options>
-                {PokemonList.filter(
-                  (pokemon) => pokemon.name != pokemonA.name
-                ).map((pokemon, idx) => (
-                  <Listbox.Option key={idx} value={pokemon} disabled={false}>
-                    {({ active, selected }) => (
-                      <li
-                        className={`${
-                          active
-                            ? "bg-blue-500 text-white rounded-lg"
-                            : "bg-kyogre-gray text-black rounded-lg"
-                        } flex`}
-                      >
-                        {selected}
-                        <TokenView {...pokemon} />
-                      </li>
-                    )}
-                  </Listbox.Option>
-                ))}
-              </Listbox.Options>
-            </Listbox>
-            {/* The Number input :) */}
+        <div className="h-[172px] w-[92%] bg-kyogre-blue-light mx-5 px-5 mt-5 py-5 rounded-2xl flex justify-between">
+          {/* The DROPDOWN FOR SWITCHER A */}
+          <Listbox
+            as="div"
+            className="w-fit"
+            value={pokemonA}
+            onChange={setPokemonA}
+          >
+            <Listbox.Button className=" rounded-lg bg-white hover:bg-violet-400 flex items-center">
+              <TokenView {...pokemonA} />
+              <ChevronDownIcon className="h-12" />
+            </Listbox.Button>
+            <Listbox.Options>
+              {PokemonList.filter(
+                (pokemon) => pokemon.name != pokemonA.name
+              ).map((pokemon, idx) => (
+                <Listbox.Option key={idx} value={pokemon} disabled={false}>
+                  {({ active, selected }) => (
+                    <li
+                      className={`${
+                        active
+                          ? "bg-blue-500 text-white rounded-b-lg"
+                          : "bg-kyogre-red text-black rounded-b-lg"
+                      } cursor-default relative z-40 select-none py-2 pl-6 pr-4 `}
+                    >
+                      {selected}
+                      <TokenView {...pokemon} />
+                    </li>
+                  )}
+                </Listbox.Option>
+              ))}
+            </Listbox.Options>
+          </Listbox>
+          {/* The Number input :) */}
+          <div className="flex">
             <input
               type="number"
               min="0"
@@ -186,45 +189,48 @@ export default function Home() {
         >
           <Image height={100} width={100} src={TradeButton} />
         </button>
-        <div className="h-[40%] w-[92%] bg-kyogre-red mx-5 rounded-2xl flex items-center justify-between">
-          <div className="mx-3 my-5 contents items-center justify-between ">
-            {/* The DROPDOWN FOR SWITCHER A */}
-            <Listbox value={pokemonB} onChange={setPokemonB}>
-              <Listbox.Button className="ml-2 rounded-lg bg-white hover:bg-violet-400 flex items-center">
-                <TokenView {...pokemonB} />
-                <ChevronDownIcon className="h-12" />
-              </Listbox.Button>
-              <Listbox.Options>
-                {PokemonList.filter(
-                  (pokemon) => pokemon.name != pokemonB.name
-                ).map((pokemon, idx) => (
-                  <Listbox.Option key={idx} value={pokemon} disabled={false}>
-                    {({ active, selected }) => (
-                      <div>
-                        <li
-                          className={`${
-                            active
-                              ? "bg-blue-500 text-white rounded-lg"
-                              : "bg-kyogre-gray text-black rounded-lg"
-                          } flex`}
-                        >
-                          {selected}
-                          <TokenView {...pokemon} />
-                        </li>
-                      </div>
-                    )}
-                  </Listbox.Option>
-                ))}
-              </Listbox.Options>
-            </Listbox>
-            {/* The Number input :) */}
+        <div className="h-[172px] w-[92%] bg-kyogre-blue-light mx-5 my-5 px-5 py-5 rounded-2xl flex justify-between">
+          {/* The DROPDOWN FOR SWITCHER A */}
+          <Listbox
+            as="div"
+            className="w-fit"
+            value={pokemonB}
+            onChange={setPokemonB}
+          >
+            <Listbox.Button className=" rounded-lg bg-white hover:bg-violet-400 flex items-center">
+              <TokenView {...pokemonB} />
+              <ChevronDownIcon className="h-12" />
+            </Listbox.Button>
+            <Listbox.Options>
+              {PokemonList.filter(
+                (pokemon) => pokemon.name != pokemonB.name
+              ).map((pokemon, idx) => (
+                <Listbox.Option key={idx} value={pokemon} disabled={false}>
+                  {({ active, selected }) => (
+                    <li
+                      className={`${
+                        active
+                          ? "bg-blue-500 text-white rounded-b-lg"
+                          : "bg-kyogre-red text-black rounded-b-lg"
+                      } cursor-default relative z-40 select-none py-2 pl-6 pr-4 `}
+                    >
+                      {selected}
+                      <TokenView {...pokemon} />
+                    </li>
+                  )}
+                </Listbox.Option>
+              ))}
+            </Listbox.Options>
+          </Listbox>
+          {/* The Number input :) */}
+          <div className="flex">
             <input
               type="number"
               min="0"
               id="amountB"
               className="amount-input"
               placeholder="0"
-              value={amountB}
+              value={amountA}
               onChange={
                 (ev: React.ChangeEvent<HTMLInputElement>): void =>
                   setAmountB(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
