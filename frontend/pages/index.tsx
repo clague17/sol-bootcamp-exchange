@@ -259,6 +259,8 @@ export default function Home() {
   const tryExchange = async () => {
     let provider = getProvider();
     let walletAddress = window.solana;
+
+    // do something
   };
 
   return (
