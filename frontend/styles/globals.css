@@ -9,3 +9,23 @@
 .connect-wallet-button {
   @apply text-white bg-gradient-to-l from-indigo-500 to-pink-500 animate-custom-pulse animate-bounce-slow;
 }
+
+.amount-input {
+  @apply bg-kyogre-blue-dark text-xl truncate w-32 text-right border border-gray-300 text-white rounded-xl focus:ring-blue-500 focus:border-blue-500 p-2.5 mx-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+}
+
+/* This aligns the placeholder text to the end of the container */
+::-webkit-input-placeholder {
+  text-align: right;
+}
+/* mozilla solution */
+input:-moz-placeholder {
+  text-align: right;
+}
+
+/* This removes the arrows from the input="number"  */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
