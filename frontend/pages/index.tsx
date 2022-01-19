@@ -144,7 +144,7 @@ export default function Home() {
             >
               {({ open }) => (
                 <>
-                  <Listbox.Button className="rounded-lg bg-white hover:bg-violet-400 flex items-center mx-2 md:mx-5">
+                  <Listbox.Button className="rounded-lg bg-white hover:bg-kyogre-blue-dark flex items-center mx-2 md:mx-5">
                     <TokenView {...pokemonA} />
                     <ChevronDownIcon className="h-12" />
                   </Listbox.Button>
@@ -167,7 +167,7 @@ export default function Home() {
                             <li
                               className={`${
                                 active
-                                  ? "bg-blue-500 text-white rounded-b-lg"
+                                  ? "bg-blue-900 text-white rounded-b-lg"
                                   : "bg-kyogre-red text-black rounded-b-lg"
                               } cursor-default relative z-40 select-none py-2 mx-2 md:mx-5 pl-6 pr-4 `}
                             >
@@ -215,7 +215,7 @@ export default function Home() {
             >
               {({ open }) => (
                 <>
-                  <Listbox.Button className="rounded-lg bg-white hover:bg-violet-400 flex items-center mx-2 md:mx-5">
+                  <Listbox.Button className="rounded-lg bg-white hover:bg-kyogre-blue-dark flex items-center mx-2 md:mx-5">
                     <TokenView {...pokemonB} />
                     <ChevronDownIcon className="h-12" />
                   </Listbox.Button>
@@ -238,7 +238,7 @@ export default function Home() {
                             <li
                               className={`${
                                 active
-                                  ? "bg-blue-500 text-white rounded-b-lg"
+                                  ? "bg-blue-900 text-white rounded-b-lg"
                                   : "bg-kyogre-red text-black rounded-b-lg"
                               } cursor-default relative z-40 select-none py-2 mx-2 md:mx-5 pl-6 pr-4 `}
                             >
