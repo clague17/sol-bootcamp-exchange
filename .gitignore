@@ -49,5 +49,5 @@ Cargo.lock
 *test-ledger
 
 # env variables
-./.env
+.env
 
