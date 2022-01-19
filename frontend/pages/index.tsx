@@ -190,7 +190,7 @@ export default function Home() {
                 id="amountA"
                 className="amount-input"
                 placeholder="0"
-                value={amountA}
+                value={amountA ? amountA : ""}
                 onChange={
                   (ev: React.ChangeEvent<HTMLInputElement>): void =>
                     setAmountA(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
@@ -261,7 +261,7 @@ export default function Home() {
                 id="amountB"
                 className="amount-input"
                 placeholder="0"
-                value={amountA}
+                value={amountB ? amountB : ""}
                 onChange={
                   (ev: React.ChangeEvent<HTMLInputElement>): void =>
                     setAmountB(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
