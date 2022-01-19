@@ -315,19 +315,27 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
   console.log(
     `Init Exchange Booth Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
   );
+
+  let data = (
+    await connection.getAccountInfo(echoBuffer.publicKey, "confirmed")
+  )?.data;
+  console.log("Echo Buffer Text:", data?.toString());
+
   // send the transaction, keeping track of that oracle key
 };
 
 const main = async () => {
   var args = process.argv.slice(2);
   const shouldAirdrop = parseInt(args[0]);
-  const debug = parseInt(args[1]);
+  const shouldCreateOracle = parseInt(args[1]);
+  const debug = parseInt(args[2]);
   // const shouldInitTokens = parseInt(args[1]);
   // const echo = args[1];
   // const price = parseInt(args[2]);
   console.log(
     `Received args:
     shouldAirdrop: ${shouldAirdrop == 1}
+    shouldCreateOracle: ${shouldCreateOracle == 1}
     debug: ${debug == 1}\n`
   );
 
@@ -345,6 +353,11 @@ const main = async () => {
     return;
   }
 
+  if (shouldCreateOracle === 1) {
+    await createOracle(connection, adminWallet);
+    return;
+  }
+
   type InitTokensData = {
     mint_a: Token;
     mint_b: Token;
@@ -352,19 +365,6 @@ const main = async () => {
     admin_token_b_account: AccountInfo<any>;
     bob_token_a_account: AccountInfo<any>;
   };
-
-  // let tokenData = shouldInitTokens
-  //   ? await initTokens(connection, adminWallet, bobWallet, debug == 1)
-  //   : await readFile(initTokensFilePath, "utf8")
-  //       .then((res) => {
-  //         let token_data = JSON.parse(res);
-  //         token_data["mint_a"] = getMint(connection, token_data.mint_a);
-  //         token_data["mint_b"] = getMint(connection, token_data.mint_a);
-  //         return token_data;
-  //       })
-  //       .catch((err) =>
-  //         console.log(`Problem reading file at ${initTokensFilePath}: `, err)
-  //       );
 
   const [mint_a, mint_b] = await initTokens(
     connection,

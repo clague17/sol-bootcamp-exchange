@@ -13,29 +13,54 @@ import { CheckIcon, ChevronDownIcon } from "@heroicons/react/solid";
 import PokedexBanner from "../assets/pokedex-header.png";
 import TradeButton from "../assets/trade.png";
 
+// Solana imports!
+import {
+  Connection,
+  sendAndConfirmTransaction,
+  Keypair,
+  Transaction,
+  SystemProgram,
+  clusterApiUrl,
+  PublicKey,
+  TransactionInstruction,
+  LAMPORTS_PER_SOL,
+  AccountInfo,
+} from "@solana/web3.js";
+
 // Constants
 const TWITTER_HANDLE = "clague17";
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 
 const PokemonList = [
-  new Pokemon("Kyogre", KyogreSprite),
-  new Pokemon("Groudon", GroudonSprite), // Just made this to populate the dropdown :)
+  new Pokemon(
+    "Kyogre",
+    KyogreSprite,
+    "3mG9t8BcKrPfWiwvjqwXAsHvGpoP8AU2yNp6fNTTLdFB" // this is the mint
+  ),
+  new Pokemon(
+    "Groudon",
+    GroudonSprite,
+    "FVXX5Ym6DChrLJPaZLe7cpJZ63hjNLt5JFHMx5GXhB53" // this is the mint
+  ),
 ];
+
+// Design decision, there's nothing inherently groudon or kyogre about it. I just chose two pokemon I like and associated them with the tokens semantically. Solana knows nothing about pokemon or kyogre, groudon, etc.
 // Design decision, the pokemon will be represented as 0, 1. Kyogre is 0, Groudon is 1
+// On the above, decided to just make Pokemon objects to keep all the info together :)
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-const Feature = ({ title, desc, ...rest }) => (
-  <div>
-    <div className="flex flex-row space-x-5 px-5">
-      <Image src={Pokedex} height={20} width={50} />
-      <h1 className="text-7xl ml-5">{title}</h1>
-    </div>
-    <p className="text-[36px] mt-4 font-semibold">{desc}</p>
-  </div>
-);
+// const Feature = ({ title, desc, ...rest }) => (
+//   <div>
+//     <div className="flex flex-row space-x-5 px-5">
+//       <Image src={Pokedex} height={20} width={50} />
+//       <h1 className="text-7xl ml-5">{title}</h1>
+//     </div>
+//     <p className="text-[36px] mt-4 font-semibold">{desc}</p>
+//   </div>
+// );
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState(null);
@@ -109,26 +134,8 @@ export default function Home() {
 
   const renderSwapContainer = () => {
     return (
-      <div className="flex bg-white">
-        <ClassicShoppingCard />
-      </div>
-    );
-  };
-
-  return (
-    // I could use kyogre-blue-light for the background or just plain black :'/ i wonder which looks better.
-    <div className="flex flex-col items-center justify-center min-h-screen pt-14 px-20 bg-black overflow-hidden">
-      <Head>
-        <title>pokèDEX</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <div className="flex flex-col items-center space-y-8 text-white">
-        <Image src={PokedexBanner} />
-        {/* {!walletAddress && renderNotConnectedContainer()} */}
-      </div>
       <div className="flex space-y-8 content-center flex-col h-fit bg-kyogre-gray w-128 max-w-4xl rounded-2xl">
-        <div className="h-[40%] w-[92%] bg-kyogre-blue-light mx-5 mt-5 rounded-2xl flex items-center justify-between">
+        <div className="h-[50%] w-[92%] bg-kyogre-blue-light mx-5 mt-5 rounded-2xl flex items-center justify-between">
           <div className="mx-3 my-5 bg-kyogre-blue-dark contents items-center">
             {/* The DROPDOWN FOR SWITCHER A */}
             <Listbox value={pokemonA} onChange={setPokemonA}>
@@ -177,9 +184,7 @@ export default function Home() {
           onClick={() => swapTradeDirection()}
           className="flex w-fit mx-14"
         >
-          <div className="hover:animate-spin-slow ">
-            <Image height={100} width={100} src={TradeButton} />
-          </div>
+          <Image height={100} width={100} src={TradeButton} />
         </button>
         <div className="h-[40%] w-[92%] bg-kyogre-red mx-5 rounded-2xl flex items-center justify-between">
           <div className="mx-3 my-5 contents items-center justify-between ">
@@ -229,7 +234,46 @@ export default function Home() {
           </div>
         </div>
       </div>
+    );
+  };
 
+  /*
+   * When our component first mounts, let's check to see if we have a connected
+   * Phantom Wallet
+   */
+  useEffect(() => {
+    const onLoad = async () => {
+      await checkIfWalletIsConnected();
+    };
+    window.addEventListener("load", onLoad);
+    return () => window.removeEventListener("load", onLoad);
+  }, []);
+
+  const getProvider = () => {
+    const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST;
+    // Create a new connection object
+    const connection = new Connection(rpcHost!!);
+    return connection;
+  };
+
+  const tryExchange = async () => {
+    let provider = getProvider();
+    let walletAddress = window.solana;
+  };
+
+  return (
+    // I could use kyogre-blue-light for the background or just plain black :'/ i wonder which looks better.
+    <div className="flex flex-col items-center justify-center min-h-screen pt-14 px-20 bg-black overflow-hidden">
+      <Head>
+        <title>pokèDEX</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <div className="flex flex-col items-center space-y-8 text-white">
+        <Image src={PokedexBanner} />
+        {!walletAddress && renderNotConnectedContainer()}
+      </div>
+      {walletAddress && renderSwapContainer()}
       <footer className="flex items-center justify-center w-full fixed bottom-0 p-0">
         <a
           className="flex items-center justify-center text-white font-bold"
