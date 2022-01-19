@@ -173,11 +173,16 @@ export default function Home() {
             />
           </div>
         </div>
-        <button onClick={() => swapTradeDirection()}>
-          <Image src={TradeButton} />
+        <button
+          onClick={() => swapTradeDirection()}
+          className="flex w-fit mx-14"
+        >
+          <div className="hover:animate-spin-slow ">
+            <Image height={100} width={100} src={TradeButton} />
+          </div>
         </button>
-        <div className="h-[40%] w-[92%] bg-kyogre-red mx-5 mt-5 rounded-2xl flex items-center justify-between">
-          <div className="mx-3 my-5 bg-kyogre-red contents items-center">
+        <div className="h-[40%] w-[92%] bg-kyogre-red mx-5 rounded-2xl flex items-center justify-between">
+          <div className="mx-3 my-5 contents items-center justify-between ">
             {/* The DROPDOWN FOR SWITCHER A */}
             <Listbox value={pokemonB} onChange={setPokemonB}>
               <Listbox.Button className="ml-2 rounded-lg bg-white hover:bg-violet-400 flex items-center">

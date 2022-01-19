@@ -17,6 +17,7 @@ module.exports = {
       animation: {
         "custom-pulse": "gradient-animation 4s linear infinite",
         "bounce-slow": "bounce 4s ease infinite",
+        "spin-slow": "spin 3s linear infinite",
       },
       colors: {
         "kyogre-blue-light": "rgb(0, 119, 188)",
