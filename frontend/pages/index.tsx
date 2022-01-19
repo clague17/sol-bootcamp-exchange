@@ -203,15 +203,6 @@ export default function Home() {
             onClick={() => swapTradeDirection()}
             className="flex w-fit mx-10 md:mx-16"
           >
-            <Transition
-              show={isShowing}
-              enter="transition-opacity duration-75"
-              enterFrom="opacity-0"
-              enterTo="opacity-100"
-              leave="transition-opacity duration-150"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
-            />
             <Image height={100} width={100} src={TradeButton} />
           </button>
           <div className="flex md:mx-5 max-h-[163px] py-5 rounded-2xl justify-between">
