@@ -114,7 +114,7 @@ const initTokens = async (
     TOKEN_PROGRAM_ID
   );
 
-  console.log("Created MintA...");
+  console.log(`Created MintA... ${mint_a.publicKey.toBase58()}`);
 
   let mint_b = await Token.createMint(
     connection,
@@ -125,7 +125,7 @@ const initTokens = async (
     TOKEN_PROGRAM_ID
   );
 
-  console.log("Created MintB...");
+  console.log(`Created MintB... ${mint_b.publicKey.toBase58()}`);
 
   // Now that we have the mints, we need to find a place to put generated tokens.
   // This place would be the associated token accounts for these wallets

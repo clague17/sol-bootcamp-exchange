@@ -10,20 +10,25 @@ import { Transition, Listbox } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/solid";
 import PokedexBanner from "../assets/pokedex-header.png";
 import TradeButton from "../assets/trade.png";
+import { PhantomProvider } from "../utils/phantom";
+const admin = require("../../debug_utils/admin_wallet.json");
 
 // Solana imports!
 import {
   Connection,
   sendAndConfirmTransaction,
   Keypair,
+  PublicKey,
   Transaction,
   SystemProgram,
   clusterApiUrl,
-  PublicKey,
   TransactionInstruction,
   LAMPORTS_PER_SOL,
   AccountInfo,
 } from "@solana/web3.js";
+import * as splToken from "@solana/spl-token";
+
+import { getMint } from "../utils/tokens";
 
 // Constants
 const TWITTER_HANDLE = "clague17";
@@ -62,14 +67,15 @@ function classNames(...classes: string[]) {
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState(null);
+  const [connection, setConnection] = useState(null);
   const [pokemonA, setPokemonA] = useState(PokemonList[0]);
   const [pokemonB, setPokemonB] = useState(PokemonList[1]);
-  const [isSwapDirection, setIsSwapDirection] = useState(true); // Neccessary for a transition
+  const [isSwapDirection, setIsSwapDirection] = useState(true); // Neccessary for a transition TODO add the transition to move selector a down and selector b up
+  const [userMaxAmountA, setUserMaxAmountA] = useState(0);
   const [amountA, setAmountA] = useState(0);
   const [amountB, setAmountB] = useState(0);
 
   const swapTradeDirection = () => {
-    console.log("We're swapping directions");
     setIsSwapDirection(!isSwapDirection);
     // Swap A
     setPokemonA(pokemonB);
@@ -78,9 +84,20 @@ export default function Home() {
     // Swap B
     setPokemonB(pokemonA);
     setAmountB(amountA);
+    checkTokenBalance(walletAddress!!); // We have to check tokenBalance again for this new token
   };
 
-  const checkIfWalletIsConnected = async () => {
+  const getProvider = (): PhantomProvider | undefined => {
+    if ("solana" in window) {
+      const anyWindow: any = window;
+      const provider = anyWindow.solana;
+      if (provider.isPhantom) {
+        return provider;
+      }
+    }
+  };
+
+  const checkIfWalletIsConnected = async (): Promise<PhantomProvider | null> => {
     try {
       const { solana } = window as any;
 
@@ -88,7 +105,10 @@ export default function Home() {
         if (solana.isPhantom) {
           // try to connect here
           const response = await solana.connect({ onlyIfTrusted: true });
-          setWalletAddress(response.publicKey.toString());
+          let walletAddress = response.publicKey.toString();
+          setWalletAddress(walletAddress);
+          checkTokenBalance(walletAddress);
+          return solana as PhantomProvider;
         }
       } else {
         alert("Solana object not found! Get a Phantom Wallet 👻");
@@ -96,6 +116,64 @@ export default function Home() {
     } catch (error) {
       console.error(error);
     }
+    return null;
+  };
+
+  const checkTokenBalance = async (walletAddress: string) => {
+    let connection = getConnection();
+
+    let ata = await splToken.Token.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
+      new PublicKey(pokemonA.tokenAddress),
+      new PublicKey(walletAddress)
+    );
+
+    let ata_ai = await connection.getAccountInfo(ata);
+
+    if (!ata_ai) {
+      // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
+    }
+
+    let userABalance = await connection.getBalance(ata);
+
+    console.log(`Found user balance for coin ${pokemonA.name}`, userABalance);
+  };
+
+  const tryMakeTokenSwap = async (walletAddress: PhantomProvider) => {
+    let connection = getConnection();
+    let mintSigner: Keypair = Keypair.fromSecretKey(Uint8Array.from(admin));
+
+    let fromTokenMintAddress: string = pokemonA.tokenAddress;
+    let toTokenMintAddress: string = pokemonB.tokenAddress;
+
+    let fromTokenMint = new splToken.Token(
+      connection,
+      new PublicKey(fromTokenMintAddress),
+      splToken.TOKEN_PROGRAM_ID,
+      mintSigner
+    );
+
+    let toTokenMint = new splToken.Token(
+      connection,
+      new PublicKey(toTokenMintAddress),
+      splToken.TOKEN_PROGRAM_ID,
+      mintSigner
+    );
+
+    const fromTokenAccountA = await fromTokenMint.getOrCreateAssociatedAccountInfo(
+      walletAddress.publicKey as PublicKey
+    );
+
+    const toTokenAccountB = await toTokenMint.getOrCreateAssociatedAccountInfo(
+      walletAddress.publicKey as PublicKey
+    );
+
+    let fromTokenAccountBalance = await connection.getTokenAccountBalance(
+      fromTokenAccountA.address
+    );
+
+    setUserMaxAmountA(fromTokenAccountBalance.value.uiAmount!!);
   };
 
   /*
@@ -287,15 +365,16 @@ export default function Home() {
     return () => window.removeEventListener("load", onLoad);
   }, []);
 
-  const getProvider = () => {
-    const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST;
+  const getConnection = () => {
+    // const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST; // This is only for the env variable once deployed
+    const rpcHost = "http://127.0.0.1:8899/";
     // Create a new connection object
     const connection = new Connection(rpcHost!!);
     return connection;
   };
 
   const tryExchange = async () => {
-    let provider = getProvider();
+    let provider = getConnection();
     let walletAddress = (window as any).solana;
 
     // do something
