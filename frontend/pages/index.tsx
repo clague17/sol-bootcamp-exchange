@@ -10,6 +10,7 @@ import { Transition, Listbox } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/solid";
 import PokedexBanner from "../assets/pokedex-header.png";
 import TradeButton from "../assets/trade.png";
+import SwapButton from "../assets/swap.png";
 import { PhantomProvider } from "../utils/phantom";
 const admin = require("../../debug_utils/admin_wallet.json");
 
@@ -28,7 +29,7 @@ import {
 } from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
 
-import { getMint } from "../utils/tokens";
+import { findAssociatedTokenAddress } from "../utils/tokens";
 
 // Constants
 const TWITTER_HANDLE = "clague17";
@@ -38,7 +39,7 @@ const PokemonList = [
   new Pokemon(
     "Kyogre",
     KyogreSprite,
-    "Ekm3dm2Fq3ac6ub1XfHrDGGLGH9UT2WZEVPCqpuqaSbj" // this is the mint
+    "Ekm3dm2Fq3ac6ub1XfHrDGGLGH9UT2WZEVPCqpuqaSbj" // this is the mint address
   ),
   new Pokemon(
     "Groudon",
@@ -70,21 +71,19 @@ export default function Home() {
   const [connection, setConnection] = useState(null);
   const [pokemonA, setPokemonA] = useState(PokemonList[0]);
   const [pokemonB, setPokemonB] = useState(PokemonList[1]);
-  const [isSwapDirection, setIsSwapDirection] = useState(true); // Neccessary for a transition TODO add the transition to move selector a down and selector b up
   const [userMaxAmountA, setUserMaxAmountA] = useState(0);
   const [amountA, setAmountA] = useState(0);
   const [amountB, setAmountB] = useState(0);
 
   const swapTradeDirection = () => {
-    setIsSwapDirection(!isSwapDirection);
-    // Swap A
+    checkTokenBalance(walletAddress!!); // We have to check tokenBalance again for this new token
+
     setPokemonA(pokemonB);
     setAmountA(amountB);
 
     // Swap B
     setPokemonB(pokemonA);
     setAmountB(amountA);
-    checkTokenBalance(walletAddress!!); // We have to check tokenBalance again for this new token
   };
 
   const getProvider = (): PhantomProvider | undefined => {
@@ -141,12 +140,15 @@ export default function Home() {
       console.log(
         `Oopsie, looks like account ${walletAddress} doesn't have a tokenAccount for the ${pokemonB.name} token with address ${pokemonB.tokenAddress}`
       );
+      // Toast
       setUserMaxAmountA(-1);
       return;
       // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
     }
 
+    // let userBBalance = await connection.getTokenAccountBalance(ata);
     let userBBalance = await connection.getTokenAccountBalance(ata);
+    console.log("Balance found for the ata: ", userBBalance.value?.uiAmount);
 
     setUserMaxAmountA(userBBalance.value.uiAmount!!); // In this case, we want to set amount A for the B balance, for the reasons above
 
@@ -167,12 +169,16 @@ export default function Home() {
       new PublicKey(walletAddress)
     );
 
+    console.log("ata found: ", ata.toBase58());
+
     let ata_ai = await connection.getAccountInfo(ata);
 
     if (!ata_ai) {
       console.log(
         `Oopsie, looks like account ${walletAddress} doesn't have a tokenAccount for the ${pokemonA.name} token with address ${pokemonA.tokenAddress}`
       );
+      setUserMaxAmountA(-1);
+      return;
       // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
     }
 
@@ -181,7 +187,7 @@ export default function Home() {
 
     console.log(
       `Found user balance for coin ${pokemonA.name} with address ${pokemonA.tokenAddress}`,
-      userABalance
+      userABalance.value.uiAmount!!
     );
   };
 
@@ -340,12 +346,22 @@ export default function Home() {
               />
             </div>
           </div>
-          <button
-            onClick={() => swapTradeDirection()}
-            className="flex w-fit mx-10 md:mx-16"
-          >
-            <Image height={100} width={100} src={TradeButton} />
-          </button>
+          <div className="flex justify-between">
+            <button
+              onClick={() => swapTradeDirection()}
+              className="flex w-fit mx-10 md:mx-16"
+            >
+              <Image height={100} width={100} src={TradeButton} />
+            </button>
+            <div className="flex flex-col justify-center">
+              <button
+                onClick={() => swapTradeDirection()}
+                className="w-32 mx-4 md:mx-10 bg-swap-yellow-dark hover:bg-swap-yellow-light py-2 rounded-full md:w-fit md:text-xl md:px-10"
+              >
+                Exchange
+              </button>
+            </div>
+          </div>
           <div className="flex md:mx-5 max-h-[163px] py-5 rounded-2xl justify-between">
             {/* The DROPDOWN FOR SWITCHER A */}
             <Listbox

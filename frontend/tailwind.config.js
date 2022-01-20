@@ -25,6 +25,8 @@ module.exports = {
         "kyogre-blue-dark": "rgb(6, 90, 156)",
         "kyogre-red": "rgb(230, 69, 86)",
         "kyogre-gray": "rgb(194, 213, 228)",
+        "swap-yellow-dark": "rgba(255,189,3,255)",
+        "swap-yellow-light": "rgba(255,227,130,255)",
       },
     },
   },

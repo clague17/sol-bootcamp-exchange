@@ -37,10 +37,10 @@ const CONNECTION = LOCAL_NET;
 // Necessary constants:
 const oracleKey = new PublicKey("AE3nhQH1hNYA198w5yWoMzxtmyU4QD5Pad3dCgdpyPQN"); // This points to the actual buffer account where the oracle data is held
 const oracleProgramId = new PublicKey(
-  "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
+  "ETgEKARSAfRtNsfuCLLxTRGrZjeUDMoqKfBim3SVRJo4"
 );
 const EB_PROGRAM_ID = new PublicKey(
-  "29e799E2EERqux5qDh5YHzXNdTKa3tBbjXSMHx1g5DL2"
+  "6RUt7uZHZXas75zwR6fdTEvLH1xecXQvDy9qLHpeh4Bh"
 );
 
 const SWAP_FEE = 0.2; // will definitely have to play with the decimals on this
@@ -132,17 +132,21 @@ const initTokens = async (
 
   // Get the token account of the adminWallett olana address, if it does not exist, create it
 
-  console.log("Creating ADMIN associated token accounts...");
+  console.log(
+    `Creating ADMIN (${adminWallet.publicKey}) associated token accounts ...`
+  );
   let admin_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
     adminWallet.publicKey
   );
 
   let admin_token_b_account = await mint_b.getOrCreateAssociatedAccountInfo(
-    bobWallet.publicKey
+    adminWallet.publicKey
   );
 
   //get the token account of the bobWallet Solana address, if it does not exist, create it
-  console.log("Creating BOB associated token accounts...");
+  console.log(
+    `Creating BOB (${bobWallet.publicKey}) associated token accounts...`
+  );
   let bob_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
     bobWallet.publicKey
   );
