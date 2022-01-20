@@ -107,7 +107,7 @@ export default function Home() {
           const response = await solana.connect({ onlyIfTrusted: true });
           let walletAddress = response.publicKey.toString();
           setWalletAddress(walletAddress);
-          checkTokenBalance(walletAddress);
+          initialCheckTokenBalance(walletAddress);
           return solana as PhantomProvider;
         }
       } else {
@@ -119,9 +119,9 @@ export default function Home() {
     return null;
   };
 
+  // TODO fix this hacky. This function and the function below should really just be the same thing, eventually xD
+  // SO turns out that this has to check pokemonB, because of the way I'm calling this function in the swap, PokemonB will become pokemonA on re-render after setting the new state, BUT we need to check the token balance before that happens.
   const checkTokenBalance = async (walletAddress: string) => {
-    // TODO fix this hacky
-    // SO turns out that this has to check pokemonB, because of the way I'm calling this function in the swap, PokemonB will become pokemonA on re-render after setting the new state, BUT we need to check the token balance before that happens.
     let connection = getConnection();
 
     let ata = await splToken.Token.getAssociatedTokenAddress(
@@ -141,9 +141,40 @@ export default function Home() {
     }
 
     let userBBalance = await connection.getBalance(ata);
-    setUserMaxAmountA(userBBalance);
+    setUserMaxAmountA(userBBalance); // In this case, we want to set amount A for the B balance, for the reasons above
 
-    console.log(`Found user balance for coin ${pokemonB.name}`, userBBalance);
+    console.log(
+      `Found user balance for coin ${pokemonB.name} with address ${pokemonB.tokenAddress}`,
+      userBBalance
+    );
+  };
+
+  const initialCheckTokenBalance = async (walletAddress: string) => {
+    let connection = getConnection();
+
+    let ata = await splToken.Token.getAssociatedTokenAddress(
+      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+      splToken.TOKEN_PROGRAM_ID,
+      new PublicKey(pokemonA.tokenAddress),
+      new PublicKey(walletAddress)
+    );
+
+    let ata_ai = await connection.getAccountInfo(ata);
+
+    if (!ata_ai) {
+      console.log(
+        `Oopsie, looks like account ${walletAddress} doesn't have a tokenAccount for the ${pokemonA.name} token with address ${pokemonA.tokenAddress}`
+      );
+      // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
+    }
+
+    let userABalance = await connection.getBalance(ata);
+    setUserMaxAmountA(userABalance);
+
+    console.log(
+      `Found user balance for coin ${pokemonA.name} with address ${pokemonA.tokenAddress}`,
+      userABalance
+    );
   };
 
   const tryMakeTokenSwap = async (walletAddress: PhantomProvider) => {
@@ -246,6 +277,7 @@ export default function Home() {
                           key={idx}
                           value={pokemon}
                           disabled={false}
+                          as="div" // This got rid of the warning "li cannot appear as descendant of li"
                         >
                           {({ active, selected }) => (
                             <li
@@ -328,6 +360,7 @@ export default function Home() {
                           key={idx}
                           value={pokemon}
                           disabled={false}
+                          as="div"
                         >
                           {({ active, selected }) => (
                             <li
