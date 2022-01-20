@@ -267,7 +267,18 @@ export default function Home() {
               )}
             </Listbox>
             {/* The Number input :) */}
-            <div className="flex">
+            <div className="flex flex-col">
+              <label
+                htmlFor="amountA"
+                className="flex text-md justify-end font-medium text-kyogre-gray mx-3 md:mx-6 py-2 "
+              >
+                <button onClick={() => setAmountA(userMaxAmountA)}>
+                  Max:{" "}
+                  <span className="underline underline-offset-2 hover:text-white">
+                    {userMaxAmountA}
+                  </span>
+                </button>
+              </label>
               <input
                 type="number"
                 min="0"
