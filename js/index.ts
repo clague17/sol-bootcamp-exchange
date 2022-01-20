@@ -102,7 +102,7 @@ const initTokens = async (
   );
   console.log(
     "BOB balance: ",
-    await connection.getBalance(adminWallet.publicKey)
+    await connection.getBalance(bobWallet.publicKey)
   );
 
   let mint_a = await Token.createMint(
@@ -144,7 +144,7 @@ const initTokens = async (
   //get the token account of the bobWallet Solana address, if it does not exist, create it
   console.log("Creating BOB associated token accounts...");
   let bob_token_a_account = await mint_a.getOrCreateAssociatedAccountInfo(
-    adminWallet.publicKey
+    bobWallet.publicKey
   );
 
   // Now we have a place to put these two new tokens, after we use the two mints to airdrop them.
@@ -163,7 +163,15 @@ const initTokens = async (
     admin_token_b_account.address,
     adminWallet.publicKey, // The authority is the owner of the mint account, destination pubkey doesn't matter
     [],
-    1000000000
+    LAMPORTS_PER_SOL
+  );
+
+  console.log(
+    `minted token_a ${mint_a.publicKey} to admin ata: ${admin_token_a_account.address}`
+  );
+
+  console.log(
+    `minted token_b ${mint_b.publicKey} to admin ata: ${admin_token_b_account.address}`
   );
 
   console.log("Minting token_a to bobTokenAccount...");
@@ -174,6 +182,10 @@ const initTokens = async (
     adminWallet.publicKey, // The authority is the owner of the mint account, destination pubkey doesn't matter
     [],
     LAMPORTS_PER_SOL
+  );
+
+  console.log(
+    `minted token_a ${mint_a.publicKey} to bob ata: ${admin_token_a_account}`
   );
 
   // Now bob can transfer token_a for token_b using this exchange booth!
@@ -372,6 +384,7 @@ const main = async () => {
     bobWallet,
     debug == 1
   );
+
   // After here we have the mints, we have the token accounts, all we need left are the vaults
   // In order to initialize the vaults, we need to get the PDA for the exchange booth.
   // This is because we need to set the PDA as the authority of the vaults

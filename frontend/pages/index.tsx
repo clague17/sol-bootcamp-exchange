@@ -38,12 +38,12 @@ const PokemonList = [
   new Pokemon(
     "Kyogre",
     KyogreSprite,
-    "3mG9t8BcKrPfWiwvjqwXAsHvGpoP8AU2yNp6fNTTLdFB" // this is the mint
+    "Ekm3dm2Fq3ac6ub1XfHrDGGLGH9UT2WZEVPCqpuqaSbj" // this is the mint
   ),
   new Pokemon(
     "Groudon",
     GroudonSprite,
-    "FVXX5Ym6DChrLJPaZLe7cpJZ63hjNLt5JFHMx5GXhB53" // this is the mint
+    "5QeyMtYSoxYwXkfCNCamXPq1arPNreNd4nm4PCeodLaB" // this is the mint
   ),
 ];
 
@@ -122,6 +122,8 @@ export default function Home() {
   // TODO fix this hacky. This function and the function below should really just be the same thing, eventually xD
   // SO turns out that this has to check pokemonB, because of the way I'm calling this function in the swap, PokemonB will become pokemonA on re-render after setting the new state, BUT we need to check the token balance before that happens.
   const checkTokenBalance = async (walletAddress: string) => {
+    console.log("Checking tokens for address: ", walletAddress);
+
     let connection = getConnection();
 
     let ata = await splToken.Token.getAssociatedTokenAddress(
@@ -131,17 +133,22 @@ export default function Home() {
       new PublicKey(walletAddress)
     );
 
+    console.log("ata found: ", ata.toBase58());
+
     let ata_ai = await connection.getAccountInfo(ata);
 
     if (!ata_ai) {
       console.log(
         `Oopsie, looks like account ${walletAddress} doesn't have a tokenAccount for the ${pokemonB.name} token with address ${pokemonB.tokenAddress}`
       );
+      setUserMaxAmountA(-1);
+      return;
       // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
     }
 
-    let userBBalance = await connection.getBalance(ata);
-    setUserMaxAmountA(userBBalance); // In this case, we want to set amount A for the B balance, for the reasons above
+    let userBBalance = await connection.getTokenAccountBalance(ata);
+
+    setUserMaxAmountA(userBBalance.value.uiAmount!!); // In this case, we want to set amount A for the B balance, for the reasons above
 
     console.log(
       `Found user balance for coin ${pokemonB.name} with address ${pokemonB.tokenAddress}`,
@@ -151,6 +158,7 @@ export default function Home() {
 
   const initialCheckTokenBalance = async (walletAddress: string) => {
     let connection = getConnection();
+    console.log("Checking tokens for address: ", walletAddress);
 
     let ata = await splToken.Token.getAssociatedTokenAddress(
       splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -168,8 +176,8 @@ export default function Home() {
       // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
     }
 
-    let userABalance = await connection.getBalance(ata);
-    setUserMaxAmountA(userABalance);
+    let userABalance = await connection.getTokenAccountBalance(ata);
+    setUserMaxAmountA(userABalance.value.uiAmount!!);
 
     console.log(
       `Found user balance for coin ${pokemonA.name} with address ${pokemonA.tokenAddress}`,
@@ -299,18 +307,24 @@ export default function Home() {
               )}
             </Listbox>
             {/* The Number input :) */}
-            <div className="flex flex-col">
-              <label
-                htmlFor="amountA"
-                className="flex text-md justify-end font-medium text-kyogre-gray mx-3 md:mx-6 py-2 "
-              >
-                <button onClick={() => setAmountA(userMaxAmountA)}>
-                  Max:{" "}
-                  <span className="underline underline-offset-2 hover:text-white">
-                    {userMaxAmountA}
-                  </span>
-                </button>
-              </label>
+            <div
+              className={`${
+                userMaxAmountA >= 0 ? "" : "justify-center"
+              } flex flex-col`}
+            >
+              {userMaxAmountA >= 0 && (
+                <label
+                  htmlFor="amountA"
+                  className="flex text-md justify-end font-medium text-kyogre-gray mx-3 md:mx-6 py-2 "
+                >
+                  <button onClick={() => setAmountA(userMaxAmountA)}>
+                    Max:{" "}
+                    <span className="underline underline-offset-2 hover:text-white">
+                      {userMaxAmountA}
+                    </span>
+                  </button>
+                </label>
+              )}
               <input
                 type="number"
                 min="0"
