@@ -272,7 +272,7 @@ export default function Home() {
 
   const renderSwapContainer = () => {
     return (
-      <div className="relative justify-center mt-10">
+      <div className="relative group justify-center mt-10">
         <div
           className={`${
             pokemonA.name == PokemonList[0].name
@@ -282,9 +282,9 @@ export default function Home() {
             pokemonB.name == PokemonList[0].name
               ? "from-kyogre-blue-light"
               : "from-kyogre-red"
-          } absolute mx-auto blur-xl -inset-1 bg-gradient-to-t  w-full md:w-132 rounded-2xl`}
+          } absolute mx-auto blur-xl -inset-1 bg-gradient-to-t  w-full md:w-132 rounded-2xl opacity-75 group-hover:opacity-100 transition duration-200`}
         ></div>
-        <div className="relative mx-auto w-full md:w-132 space-y-3 flex-col bg-kyogre-blue-dark rounded-2xl">
+        <div className="relative mx-auto w-full md:w-132 space-y-3 flex-col bg-gradient-radial from-blue-600 to-blue-900 rounded-2xl">
           <div className="flex md:mx-5 max-h-[163px] py-5 rounded-2xl justify-between">
             {/* The DROPDOWN FOR SWITCHER A */}
             <Listbox
@@ -295,7 +295,13 @@ export default function Home() {
             >
               {({ open }) => (
                 <>
-                  <Listbox.Button className="rounded-lg bg-white hover:bg-kyogre-blue-dark flex items-center mx-2 md:mx-5">
+                  <Listbox.Button
+                    className={`${
+                      pokemonA.name == PokemonList[0].name
+                        ? "from-blue-300 to-kyogre-blue-light"
+                        : "from-red-300 to-kyogre-red"
+                    } rounded-lg bg-gradient-radial hover:bg-gradient-radial flex items-center mx-2 md:mx-5 `}
+                  >
                     <TokenView {...pokemonA} />
                     <ChevronDownIcon className="h-12" />
                   </Listbox.Button>
@@ -398,7 +404,13 @@ export default function Home() {
             >
               {({ open }) => (
                 <>
-                  <Listbox.Button className="rounded-lg bg-white hover:bg-kyogre-blue-dark flex items-center mx-2 md:mx-5">
+                  <Listbox.Button
+                    className={`${
+                      pokemonB.name == PokemonList[0].name
+                        ? "from-blue-300 to-kyogre-blue-light"
+                        : "from-red-300 to-kyogre-red"
+                    } rounded-lg bg-gradient-radial hover:bg-gradient-radial flex items-center mx-2 md:mx-5 `}
+                  >
                     <TokenView {...pokemonB} />
                     <ChevronDownIcon className="h-12" />
                   </Listbox.Button>

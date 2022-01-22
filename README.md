@@ -6,6 +6,8 @@ It's a passion / toy project for me to get familiar with solana programming thro
 
 I coded it up on Rust through a bootcamp
 
+<img src="./frontend/assets/poke-dex.gif" alt="Demo image" />
+
 #### TODO React:
 
 - [ ] Replace the swapper bg with a gradient-radial as well as the hover: colors for the selector to spice it up

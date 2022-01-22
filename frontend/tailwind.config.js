@@ -28,6 +28,9 @@ module.exports = {
         "swap-yellow-dark": "rgba(255,189,3,255)",
         "swap-yellow-light": "rgba(255,227,130,255)",
       },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+      },
     },
   },
   plugins: [],
