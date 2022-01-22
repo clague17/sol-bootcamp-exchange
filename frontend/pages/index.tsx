@@ -510,7 +510,7 @@ export default function Home() {
         {!walletAddress && renderNotConnectedContainer()}
       </div>
       {walletAddress && renderSwapContainer()}
-      <footer className="flex items-center justify-center w-full fixed bottom-0 left-0">
+      <footer className="flex mt-10 items-center justify-center w-full fixed bottom-0 left-0">
         <a
           className="flex items-center justify-center text-white font-bold"
           href={TWITTER_LINK}
