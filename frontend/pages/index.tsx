@@ -99,68 +99,27 @@ export default function Home() {
     checkTokenBalance(walletAddress!!); // We have to check tokenBalance again for this new token
   };
 
-  // const checkIfWalletIsConnected = async (): Promise<PhantomProvider | null> => {
-  //   try {
-  //     const { solana } = window as any;
+  const checkIfWalletIsConnected = async (): Promise<PhantomProvider | null> => {
+    try {
+      const { solana } = window as any;
 
-  //     if (solana) {
-  //       if (solana.isPhantom) {
-  //         // try to connect here
-  //         const response = await solana.connect({ onlyIfTrusted: true });
-  //         let walletAddress = response.publicKey.toString();
-  //         setWalletAddress(walletAddress);
-  //         initialCheckTokenBalance(walletAddress);
-  //         return solana as PhantomProvider;
-  //       }
-  //     } else {
-  //       alert("Solana object not found! Get a Phantom Wallet 👻");
-  //     }
-  //   } catch (error) {
-  //     console.error(error);
-  //   }
-  //   return null;
-  // };
-
-  useEffect(() => {
-    if (!provider) return;
-    // try to eagerly connect
-    provider.connect({ onlyIfTrusted: true }).catch((err) => {
-      // fail silently
-    });
-    provider.on("connect", (publicKey: PublicKey) => {
-      setWalletAddress(publicKey);
-      setConnected(true);
-      addLog("[connect] " + publicKey?.toBase58());
-    });
-    provider.on("disconnect", () => {
-      setWalletAddress(null);
-      setConnected(false);
-      addLog("[disconnect] 👋");
-    });
-    provider.on("accountChanged", (publicKey: PublicKey | null) => {
-      setWalletAddress(publicKey);
-      if (publicKey) {
-        addLog("[accountChanged] Switched account to " + publicKey?.toBase58());
+      if (solana) {
+        if (solana.isPhantom) {
+          // try to connect here
+          const response = await solana.connect({ onlyIfTrusted: true });
+          let walletAddress = response.publicKey as PublicKey;
+          setWalletAddress(walletAddress);
+          initialCheckTokenBalance(walletAddress);
+          return solana as PhantomProvider;
+        }
       } else {
-        addLog("[accountChanged] Switched unknown account");
-        // In this case, dapps could not to anything, or,
-        // Only re-connecting to the new account if it is trusted
-        // provider.connect({ onlyIfTrusted: true }).catch((err) => {
-        //   // fail silently
-        // });
-        // Or, always trying to reconnect
-        provider
-          .connect()
-          .then(() => addLog("[accountChanged] Reconnected successfully"))
-          .catch((err) => {
-            addLog("[accountChanged] Failed to re-connect: " + err.message);
-          });
+        alert("Solana object not found! Get a Phantom Wallet 👻");
       }
-    });
-    return () => {
-      provider.disconnect();
-    };
-  }, [provider, addLog]);
+    } catch (error) {
+      console.error(error);
+    }
+    return null;
+  };
 
   // TODO fix this hacky. This function and the function below should really just be the same thing, eventually xD
   // SO turns out that this has to check pokemonB, because of the way I'm calling this function in the swap, PokemonB will become pokemonA on re-render after setting the new state, BUT we need to check the token balance before that happens.
@@ -173,7 +132,7 @@ export default function Home() {
       splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
       splToken.TOKEN_PROGRAM_ID,
       new PublicKey(pokemonB.tokenAddress),
-      walletAddress
+      new PublicKey(walletAddress.toString())
     );
 
     console.log("ata found: ", ata.toBase58());
@@ -207,7 +166,7 @@ export default function Home() {
     );
   };
 
-  const initialCheckTokenBalance = async (walletAddress: string) => {
+  const initialCheckTokenBalance = async (walletAddress: PublicKey) => {
     let connection = getConnection();
     console.log("Checking tokens for address: ", walletAddress);
 
@@ -215,7 +174,7 @@ export default function Home() {
       splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
       splToken.TOKEN_PROGRAM_ID,
       new PublicKey(pokemonA.tokenAddress),
-      new PublicKey(walletAddress)
+      walletAddress
     );
 
     console.log("ata found: ", ata.toBase58());
@@ -224,7 +183,9 @@ export default function Home() {
 
     if (!ata_ai) {
       console.log(
-        `Oopsie, looks like account ${walletAddress} doesn't have a tokenAccount for the ${pokemonA.name} token with address ${pokemonA.tokenAddress}`
+        `Oopsie, looks like account ${walletAddress.toString()} doesn't have a tokenAccount for the ${
+          pokemonA.name
+        } token with address ${pokemonA.tokenAddress}`
       );
       setUserMaxAmountA(-1);
       setIsExchangeButtonEnabled(false);
@@ -311,8 +272,19 @@ export default function Home() {
 
   const renderSwapContainer = () => {
     return (
-      <div className="flex justify-center">
-        <div className="flex w-132 space-y-3 flex-col bg-kyogre-blue-light rounded-2xl">
+      <div className="relative justify-center mt-10">
+        <div
+          className={`${
+            pokemonA.name == PokemonList[0].name
+              ? "to-kyogre-blue-light"
+              : "to-kyogre-red"
+          } ${
+            pokemonB.name == PokemonList[0].name
+              ? "from-kyogre-blue-light"
+              : "from-kyogre-red"
+          } absolute mx-auto blur-xl -inset-1 bg-gradient-to-t  w-full md:w-132 rounded-2xl`}
+        ></div>
+        <div className="relative mx-auto w-full md:w-132 space-y-3 flex-col bg-kyogre-blue-dark rounded-2xl">
           <div className="flex md:mx-5 max-h-[163px] py-5 rounded-2xl justify-between">
             {/* The DROPDOWN FOR SWITCHER A */}
             <Listbox
@@ -491,13 +463,13 @@ export default function Home() {
    * When our component first mounts, let's check to see if we have a connected
    * Phantom Wallet
    */
-  // useEffect(() => {
-  //   const onLoad = async () => {
-  //     await checkIfWalletIsConnected();
-  //   };
-  //   window.addEventListener("load", onLoad);
-  //   return () => window.removeEventListener("load", onLoad);
-  // }, []);
+  useEffect(() => {
+    const onLoad = async () => {
+      await checkIfWalletIsConnected();
+    };
+    window.addEventListener("load", onLoad);
+    return () => window.removeEventListener("load", onLoad);
+  }, []);
 
   const getConnection = () => {
     // const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST; // This is only for the env variable once deployed

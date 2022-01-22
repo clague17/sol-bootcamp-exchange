@@ -645,7 +645,7 @@ const main = async () => {
   }
 
   if (shouldDepositTokens === 1) {
-    await adminDepositTokens(connection, adminWallet, 10);
+    await adminDepositTokensManual(connection, adminWallet);
     return;
   }
 
