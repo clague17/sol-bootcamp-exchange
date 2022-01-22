@@ -53,7 +53,7 @@ pub fn process(
         *admin_ai.key == eb.admin, 
         ProgramError::IncorrectProgramId,
         "Incorrect Admin"
-    );
+    )?;
 
     // finding the two vaults pdas
     let (vault_a_pda, vault_a_bump) = Pubkey::find_program_address(
@@ -80,13 +80,13 @@ pub fn process(
         *vault_a.key == vault_a_pda, 
         ProgramError::IncorrectProgramId, 
         "Incorrect Vault"
-    );
+    )?;
 
     assert_with_msg(
         *vault_b.key == vault_b_pda, 
         ProgramError::IncorrectProgramId, 
         "Incorrect Vault"
-    );
+    )?;
 
     // Now we have valid pdas for vault, we need to know how much to deposit where
     // do a token transfer from admin to vault a for amount_a
@@ -120,7 +120,7 @@ pub fn process(
     msg!("Transfering {} tokens from admin to vault_b: {}", amount_b, vault_b_pda);
 
     invoke(
-        &transfer_from_admin_to_vault_a_ix,
+        &transfer_from_admin_to_vault_b_ix,
         &[
             admin_ai.clone(), admin_token_a_acc.clone(), vault_a.clone(), token_program.clone(),
         ],

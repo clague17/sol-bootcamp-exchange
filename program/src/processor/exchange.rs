@@ -200,7 +200,7 @@ pub fn process(
         ]],
     )?;
 
-    msg!("Successfully transferred ")
+    msg!("Successfully transferred");
 
     Ok(())
 }

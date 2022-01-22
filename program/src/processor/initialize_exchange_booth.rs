@@ -125,8 +125,8 @@ pub fn process(
     // finally serialize the struct into the space allocated by the system instruction
     let mut eb = ExchangeBooth {
         admin: *admin.key,
-        vaultA: *vault_a.key,
-        vaultB:  *vault_b.key,
+        vault_a: *vault_a.key,
+        vault_b:  *vault_b.key,
         oracle: *oracle.key,
         fee: fee
     };

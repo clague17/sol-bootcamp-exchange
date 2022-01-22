@@ -20,7 +20,6 @@ import {
 import { Admin, Bob } from "./util";
 import { writeFile, readFile } from "fs/promises";
 import { getMint } from "./util";
-
 // Debug niceties
 const initTokensFilePath = "../debug_utils/init_token_accounts.json";
 
@@ -40,7 +39,14 @@ const oracleProgramId = new PublicKey(
   "ETgEKARSAfRtNsfuCLLxTRGrZjeUDMoqKfBim3SVRJo4"
 );
 const EB_PROGRAM_ID = new PublicKey(
-  "6RUt7uZHZXas75zwR6fdTEvLH1xecXQvDy9qLHpeh4Bh"
+  "29e799E2EERqux5qDh5YHzXNdTKa3tBbjXSMHx1g5DL2"
+);
+
+const mint_a_pubkey = new PublicKey(
+  "EKb3go1qvctvBKcQoSCUyKkWAMVySwX9yJhybANpqBw5"
+);
+const mint_b_pubkey = new PublicKey(
+  "fJdfVE7SEDyh3fXYrDNwvGw1mEK1k8KrJUGgFzStQtY"
 );
 
 const SWAP_FEE = 0.2; // will definitely have to play with the decimals on this
@@ -151,6 +157,10 @@ const initTokens = async (
     bobWallet.publicKey
   );
 
+  let bob_token_b_account = await mint_b.getOrCreateAssociatedAccountInfo(
+    bobWallet.publicKey
+  );
+
   // Now we have a place to put these two new tokens, after we use the two mints to airdrop them.
 
   // mint a token_a into adminTokenAccount
@@ -203,6 +213,7 @@ const initTokens = async (
       admin_token_a_account: admin_token_a_account.address.toBase58(),
       admin_token_b_account: admin_token_b_account.address.toBase58(),
       bob_token_a_account: bob_token_a_account.address.toBase58(),
+      bob_token_b_account: bob_token_b_account.address.toBase58(),
     };
 
     writeFile(initTokensFilePath, JSON.stringify(data))
@@ -340,11 +351,268 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
   // send the transaction, keeping track of that oracle key
 };
 
+const logBalances = async (
+  connection: Connection,
+  wallet1: PublicKey,
+  ebPDA: PublicKey,
+  wallet2?: PublicKey
+) => {
+  // check balances
+  const userToken1AccountInfo = (
+    await connection.getParsedTokenAccountsByOwner(wallet1, {
+      mint: mint_a_pubkey,
+    })
+  ).value[0].account.data.parsed.info;
+  const userToken2AccountInfo = (
+    await connection.getParsedTokenAccountsByOwner(wallet1, {
+      mint: mint_b_pubkey,
+    })
+  ).value[0].account.data.parsed.info;
+  let vault1AccountInfo = (
+    await connection.getParsedTokenAccountsByOwner(ebPDA, {
+      mint: mint_a_pubkey,
+    })
+  ).value[0].account.data.parsed.info;
+  let vault2AccountInfo = (
+    await connection.getParsedTokenAccountsByOwner(ebPDA, {
+      mint: mint_b_pubkey,
+    })
+  ).value[0].account.data.parsed.info;
+  console.log(
+    "userToken1Account balance:",
+    userToken1AccountInfo.tokenAmount.amount
+  );
+  console.log(
+    "userToken2ccount balance:",
+    userToken2AccountInfo.tokenAmount.amount
+  );
+  console.log("vault1Account balance:", vault1AccountInfo.tokenAmount.amount);
+  console.log("vault2Account balance:", vault2AccountInfo.tokenAmount.amount);
+};
+
+const adminDepositTokensManual = async (
+  connection: Connection,
+  adminWallet: Keypair
+) => {
+  console.log("Execute Deposit Tokens");
+
+  console.log("Creating deposits instruction...");
+
+  let exchangeIdx = Buffer.from(new Uint8Array([1]));
+  let depositAmountA = Buffer.from(
+    new Uint8Array(new BN(2).toArray("le", 8)) // 6 decimals for both mints :)
+  );
+  let depositAmountB = Buffer.from(
+    new Uint8Array(new BN(2).toArray("le", 8)) // 6 decimals for both mints :)
+  );
+
+  let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("eb_pda"),
+      adminWallet.publicKey.toBuffer(),
+      mint_a_pubkey.toBuffer(),
+      mint_b_pubkey.toBuffer(),
+    ],
+    EB_PROGRAM_ID
+  );
+
+  let [vault_a_pda, vault_a_bump] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("vault_a"),
+      adminWallet.publicKey.toBuffer(),
+      mint_a_pubkey.toBuffer(),
+      ebPDA.toBuffer(),
+    ],
+    EB_PROGRAM_ID
+  );
+
+  let [vault_b_pda, vault_b_bump] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("vault_b"),
+      adminWallet.publicKey.toBuffer(),
+      mint_b_pubkey.toBuffer(),
+      ebPDA.toBuffer(),
+    ],
+    EB_PROGRAM_ID
+  );
+
+  let adminATokenAccount = new PublicKey(
+    "9qF6A3GPNjaJGFe78FLVahw9Lxbh4DJWGM2sW2BuixgW"
+  );
+
+  let adminBTokenAccount = new PublicKey(
+    "2DHCA76iJWFmTvdyvriGSUoVvy9pKyxJnv9ZrKj2ZRpX"
+  );
+
+  console.log("Sending the exchange instruction!");
+
+  let exchangeIx = new TransactionInstruction({
+    keys: [
+      { pubkey: ebPDA, isSigner: false, isWritable: false },
+      { pubkey: adminWallet.publicKey, isSigner: true, isWritable: false },
+      { pubkey: adminATokenAccount, isSigner: false, isWritable: true },
+      { pubkey: adminBTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: vault_a_pda, isSigner: false, isWritable: true },
+      { pubkey: vault_b_pda, isSigner: false, isWritable: true },
+      { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
+      { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    programId: EB_PROGRAM_ID,
+    data: Buffer.concat([exchangeIdx, depositAmountA, depositAmountB]),
+  });
+
+  // make the tx
+  let exchangeTx = new Transaction();
+  exchangeTx.add(exchangeIx);
+
+  console.log("Sending transaction...");
+
+  // send tx
+  let exchangeTxid = await sendAndConfirmTransaction(
+    connection,
+    exchangeTx,
+    [adminWallet],
+    {
+      skipPreflight: true,
+      preflightCommitment: "confirmed",
+    }
+  );
+
+  // tx url on devnet
+  console.log(`https://explorer.solana.com/tx/${exchangeTxid}?cluster=devnet`);
+
+  logBalances(connection, adminWallet.publicKey, ebPDA);
+};
+
+const adminDepositTokens = async (
+  connection: Connection,
+  adminWallet: Keypair,
+  amount: number
+) => {
+  let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("eb_pda"),
+      adminWallet.publicKey.toBuffer(),
+      mint_a_pubkey.toBuffer(),
+      mint_b_pubkey.toBuffer(),
+    ],
+    EB_PROGRAM_ID
+  );
+
+  let [vault_a_pda, vault_a_bump] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("vault_a"),
+      adminWallet.publicKey.toBuffer(),
+      mint_a_pubkey.toBuffer(),
+      ebPDA.toBuffer(),
+    ],
+    EB_PROGRAM_ID
+  );
+};
+
+const transferTokens = async (
+  connection: Connection,
+  adminWallet: Keypair,
+  bobWallet: Keypair
+) => {
+  const exchangeIdx = Buffer.from(new Uint8Array([3]));
+  const swapAmount = Buffer.from(
+    new Uint8Array(new BN(3 * 10 ** 6).toArray("le", 8)) // 6 decimals for both mints :)
+  );
+
+  console.log("Execute Transfer tokens!");
+  console.log("Finding eb PDA...");
+
+  let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("eb_pda"),
+      adminWallet.publicKey.toBuffer(),
+      mint_a_pubkey.toBuffer(),
+      mint_b_pubkey.toBuffer(),
+    ],
+    EB_PROGRAM_ID
+  );
+
+  console.log("Finding vault PDAs...");
+
+  let [vault_a_pda, vault_a_bump] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("vault_a"),
+      adminWallet.publicKey.toBuffer(),
+      mint_a_pubkey.toBuffer(),
+      ebPDA.toBuffer(),
+    ],
+    EB_PROGRAM_ID
+  );
+
+  let [vault_b_pda, vault_b_bump] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("vault_b"),
+      adminWallet.publicKey.toBuffer(),
+      mint_b_pubkey.toBuffer(),
+      ebPDA.toBuffer(),
+    ],
+    EB_PROGRAM_ID
+  );
+
+  let bobFromTokenAccount = new PublicKey(
+    "3ws2vWH9tDKytJpLrKCZC7enWqbUMxLJwqDuofRuwdaT"
+  );
+
+  let bobToTokenAccount = new PublicKey(
+    "EY8swj1gUM8Bv88Jym84vtXLvFjALa2Krb7mSMLHvFcv"
+  );
+
+  console.log("Creating transaction instruction...");
+
+  let exchangeIx = new TransactionInstruction({
+    keys: [
+      { pubkey: ebPDA, isSigner: false, isWritable: false },
+      { pubkey: bobWallet.publicKey, isSigner: true, isWritable: false },
+      { pubkey: bobFromTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: bobToTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: vault_a_pda, isSigner: false, isWritable: true },
+      { pubkey: vault_b_pda, isSigner: false, isWritable: true },
+      { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
+      { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
+      { pubkey: oracleKey, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    programId: EB_PROGRAM_ID,
+    data: Buffer.concat([exchangeIdx, swapAmount]),
+  });
+
+  // make the tx
+  let exchangeTx = new Transaction();
+  exchangeTx.add(exchangeIx);
+
+  console.log("Sending transaction...");
+
+  // send tx
+  let exchangeTxid = await sendAndConfirmTransaction(
+    connection,
+    exchangeTx,
+    [bobWallet],
+    {
+      skipPreflight: true,
+      preflightCommitment: "confirmed",
+    }
+  );
+
+  // tx url on devnet
+  console.log(`https://explorer.solana.com/tx/${exchangeTxid}?cluster=devnet`);
+
+  logBalances(connection, bobWallet.publicKey, ebPDA);
+};
+
 const main = async () => {
   var args = process.argv.slice(2);
   const shouldAirdrop = parseInt(args[0]);
   const shouldCreateOracle = parseInt(args[1]);
-  const debug = parseInt(args[2]);
+  const shouldDepositTokens = parseInt(args[2]);
+  const shouldTransferTokens = parseInt(args[3]);
+  const debug = parseInt(args[4]);
   // const shouldInitTokens = parseInt(args[1]);
   // const echo = args[1];
   // const price = parseInt(args[2]);
@@ -352,6 +620,8 @@ const main = async () => {
     `Received args:
     shouldAirdrop: ${shouldAirdrop == 1}
     shouldCreateOracle: ${shouldCreateOracle == 1}
+    shouldDepositTokens: ${shouldDepositTokens == 1}
+    shouldTransferTokens: ${shouldTransferTokens == 1}
     debug: ${debug == 1}\n`
   );
 
@@ -371,6 +641,16 @@ const main = async () => {
 
   if (shouldCreateOracle === 1) {
     await createOracle(connection, adminWallet);
+    return;
+  }
+
+  if (shouldDepositTokens === 1) {
+    await adminDepositTokens(connection, adminWallet, 10);
+    return;
+  }
+
+  if (shouldTransferTokens === 1) {
+    await transferTokens(connection, adminWallet, bobWallet);
     return;
   }
 

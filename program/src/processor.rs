@@ -28,17 +28,17 @@ impl Processor {
                 msg!("Instruction: InitializeExchangeBooth");
                 initialize_exchange_booth::process(program_id, accounts, instruction_data, fee)?;
             }
-            ExchangeBoothInstruction::Deposit { } => {
+            ExchangeBoothInstruction::Deposit { amount_a, amount_b} => {
                 msg!("Instruction: Deposit");
-                deposit::process(program_id, accounts)?;
+                deposit::process(program_id, accounts, amount_a, amount_b)?;
             }
             ExchangeBoothInstruction::Withdraw { } => {
                 msg!("Instruction: Withdraw");
                 withdraw::process(program_id, accounts)?;
             }
-            ExchangeBoothInstruction::Exchange { } => {
+            ExchangeBoothInstruction::Exchange { amount } => {
                 msg!("Instruction: Withdraw");
-                exchange::process(program_id, accounts)?;
+                exchange::process(program_id, accounts, amount)?;
             }
             ExchangeBoothInstruction::CloseExchangeBooth { } => {
                 msg!("Instruction: CloseExchangeBooth");

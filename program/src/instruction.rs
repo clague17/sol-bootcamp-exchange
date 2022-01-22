@@ -28,6 +28,8 @@ pub enum ExchangeBoothInstruction {
 
     Deposit {
         // TODO
+        amount_a: u8,
+        amount_b: u8
     },
 
     // Withdraw some of mint A from vault A 
@@ -64,7 +66,7 @@ pub enum ExchangeBoothInstruction {
 
 
     Exchange {
-        // TODO
+        amount: f64
     },
     CloseExchangeBooth {
         // TODO

@@ -1,5 +1,5 @@
 import Head from "next/head";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import twitterLogo from "../assets/twitter-logo.svg"; // statically load it from Nextjs. The image MUST be in public folder though
 import TokenView from "../components/TokenView";
@@ -20,12 +20,6 @@ import {
   sendAndConfirmTransaction,
   Keypair,
   PublicKey,
-  Transaction,
-  SystemProgram,
-  clusterApiUrl,
-  TransactionInstruction,
-  LAMPORTS_PER_SOL,
-  AccountInfo,
 } from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
 
@@ -66,61 +60,111 @@ function classNames(...classes: string[]) {
 //   </div>
 // );
 
+const getProvider = (): PhantomProvider | undefined => {
+  if (typeof window != "undefined" && "solana" in window) {
+    const anyWindow: any = window;
+    const provider = anyWindow.solana;
+    if (provider.isPhantom) {
+      return provider;
+    }
+  }
+};
+
 export default function Home() {
-  const [walletAddress, setWalletAddress] = useState(null);
-  const [connection, setConnection] = useState(null);
+  const provider = getProvider();
+  const rpcHost = "http://127.0.0.1:8899/";
+  // Create a new connection object
+  const connection = new Connection(rpcHost!!);
+  const [logs, setLogs] = useState<string[]>([]);
+  const addLog = useCallback(
+    (log: string) => setLogs((logs) => [...logs, "> " + log]),
+    []
+  );
+  const [, setConnected] = useState<boolean>(false);
+  const [walletAddress, setWalletAddress] = useState<PublicKey | null>(null);
   const [pokemonA, setPokemonA] = useState(PokemonList[0]);
   const [pokemonB, setPokemonB] = useState(PokemonList[1]);
+  const [isExchangeButtonEnabled, setIsExchangeButtonEnabled] = useState(false);
   const [userMaxAmountA, setUserMaxAmountA] = useState(0);
   const [amountA, setAmountA] = useState(0);
   const [amountB, setAmountB] = useState(0);
 
   const swapTradeDirection = () => {
-    checkTokenBalance(walletAddress!!); // We have to check tokenBalance again for this new token
-
     setPokemonA(pokemonB);
     setAmountA(amountB);
 
     // Swap B
     setPokemonB(pokemonA);
     setAmountB(amountA);
+    checkTokenBalance(walletAddress!!); // We have to check tokenBalance again for this new token
   };
 
-  const getProvider = (): PhantomProvider | undefined => {
-    if ("solana" in window) {
-      const anyWindow: any = window;
-      const provider = anyWindow.solana;
-      if (provider.isPhantom) {
-        return provider;
-      }
-    }
-  };
+  // const checkIfWalletIsConnected = async (): Promise<PhantomProvider | null> => {
+  //   try {
+  //     const { solana } = window as any;
 
-  const checkIfWalletIsConnected = async (): Promise<PhantomProvider | null> => {
-    try {
-      const { solana } = window as any;
+  //     if (solana) {
+  //       if (solana.isPhantom) {
+  //         // try to connect here
+  //         const response = await solana.connect({ onlyIfTrusted: true });
+  //         let walletAddress = response.publicKey.toString();
+  //         setWalletAddress(walletAddress);
+  //         initialCheckTokenBalance(walletAddress);
+  //         return solana as PhantomProvider;
+  //       }
+  //     } else {
+  //       alert("Solana object not found! Get a Phantom Wallet 👻");
+  //     }
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  //   return null;
+  // };
 
-      if (solana) {
-        if (solana.isPhantom) {
-          // try to connect here
-          const response = await solana.connect({ onlyIfTrusted: true });
-          let walletAddress = response.publicKey.toString();
-          setWalletAddress(walletAddress);
-          initialCheckTokenBalance(walletAddress);
-          return solana as PhantomProvider;
-        }
+  useEffect(() => {
+    if (!provider) return;
+    // try to eagerly connect
+    provider.connect({ onlyIfTrusted: true }).catch((err) => {
+      // fail silently
+    });
+    provider.on("connect", (publicKey: PublicKey) => {
+      setWalletAddress(publicKey);
+      setConnected(true);
+      addLog("[connect] " + publicKey?.toBase58());
+    });
+    provider.on("disconnect", () => {
+      setWalletAddress(null);
+      setConnected(false);
+      addLog("[disconnect] 👋");
+    });
+    provider.on("accountChanged", (publicKey: PublicKey | null) => {
+      setWalletAddress(publicKey);
+      if (publicKey) {
+        addLog("[accountChanged] Switched account to " + publicKey?.toBase58());
       } else {
-        alert("Solana object not found! Get a Phantom Wallet 👻");
+        addLog("[accountChanged] Switched unknown account");
+        // In this case, dapps could not to anything, or,
+        // Only re-connecting to the new account if it is trusted
+        // provider.connect({ onlyIfTrusted: true }).catch((err) => {
+        //   // fail silently
+        // });
+        // Or, always trying to reconnect
+        provider
+          .connect()
+          .then(() => addLog("[accountChanged] Reconnected successfully"))
+          .catch((err) => {
+            addLog("[accountChanged] Failed to re-connect: " + err.message);
+          });
       }
-    } catch (error) {
-      console.error(error);
-    }
-    return null;
-  };
+    });
+    return () => {
+      provider.disconnect();
+    };
+  }, [provider, addLog]);
 
   // TODO fix this hacky. This function and the function below should really just be the same thing, eventually xD
   // SO turns out that this has to check pokemonB, because of the way I'm calling this function in the swap, PokemonB will become pokemonA on re-render after setting the new state, BUT we need to check the token balance before that happens.
-  const checkTokenBalance = async (walletAddress: string) => {
+  const checkTokenBalance = async (walletAddress: PublicKey) => {
     console.log("Checking tokens for address: ", walletAddress);
 
     let connection = getConnection();
@@ -129,7 +173,7 @@ export default function Home() {
       splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
       splToken.TOKEN_PROGRAM_ID,
       new PublicKey(pokemonB.tokenAddress),
-      new PublicKey(walletAddress)
+      walletAddress
     );
 
     console.log("ata found: ", ata.toBase58());
@@ -138,10 +182,13 @@ export default function Home() {
 
     if (!ata_ai) {
       console.log(
-        `Oopsie, looks like account ${walletAddress} doesn't have a tokenAccount for the ${pokemonB.name} token with address ${pokemonB.tokenAddress}`
+        `Oopsie, looks like account ${walletAddress.toString()} doesn't have a tokenAccount for the ${
+          pokemonB.name
+        } token with address ${pokemonB.tokenAddress}`
       );
       // Toast
       setUserMaxAmountA(-1);
+      setIsExchangeButtonEnabled(false);
       return;
       // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
     }
@@ -151,6 +198,8 @@ export default function Home() {
     console.log("Balance found for the ata: ", userBBalance.value?.uiAmount);
 
     setUserMaxAmountA(userBBalance.value.uiAmount!!); // In this case, we want to set amount A for the B balance, for the reasons above
+
+    setIsExchangeButtonEnabled(userBBalance.value.uiAmount!! > 0);
 
     console.log(
       `Found user balance for coin ${pokemonB.name} with address ${pokemonB.tokenAddress}`,
@@ -178,12 +227,15 @@ export default function Home() {
         `Oopsie, looks like account ${walletAddress} doesn't have a tokenAccount for the ${pokemonA.name} token with address ${pokemonA.tokenAddress}`
       );
       setUserMaxAmountA(-1);
+      setIsExchangeButtonEnabled(false);
       return;
       // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
     }
 
     let userABalance = await connection.getTokenAccountBalance(ata);
+
     setUserMaxAmountA(userABalance.value.uiAmount!!);
+    setIsExchangeButtonEnabled(userABalance.value.uiAmount!! > 0);
 
     console.log(
       `Found user balance for coin ${pokemonA.name} with address ${pokemonA.tokenAddress}`,
@@ -212,19 +264,15 @@ export default function Home() {
       mintSigner
     );
 
-    const fromTokenAccountA = await fromTokenMint.getOrCreateAssociatedAccountInfo(
+    const fromTokenAccount = await fromTokenMint.getOrCreateAssociatedAccountInfo(
       walletAddress.publicKey as PublicKey
     );
 
-    const toTokenAccountB = await toTokenMint.getOrCreateAssociatedAccountInfo(
+    const toTokenAccount = await toTokenMint.getOrCreateAssociatedAccountInfo(
       walletAddress.publicKey as PublicKey
     );
 
-    let fromTokenAccountBalance = await connection.getTokenAccountBalance(
-      fromTokenAccountA.address
-    );
-
-    setUserMaxAmountA(fromTokenAccountBalance.value.uiAmount!!);
+    // setUserMaxAmountA(fromTokenAccountBalance.value.uiAmount!!);
   };
 
   /*
@@ -239,6 +287,8 @@ export default function Home() {
       setWalletAddress(response.publicKey.toString());
     }
   };
+
+  const tryExchangeTokens = async () => {};
 
   const renderNotConnectedContainer = () => {
     return (
@@ -333,7 +383,6 @@ export default function Home() {
               )}
               <input
                 type="number"
-                min="0"
                 id="amountA"
                 className="amount-input"
                 placeholder="0"
@@ -355,8 +404,13 @@ export default function Home() {
             </button>
             <div className="flex flex-col justify-center">
               <button
-                onClick={() => swapTradeDirection()}
-                className="w-32 mx-4 md:mx-10 bg-swap-yellow-dark hover:bg-swap-yellow-light py-2 rounded-full md:w-fit md:text-xl md:px-10"
+                onClick={() => tryExchangeTokens()}
+                disabled={!isExchangeButtonEnabled}
+                className={`${
+                  isExchangeButtonEnabled
+                    ? "bg-swap-yellow-dark hover:bg-swap-yellow-light"
+                    : "bg-kyogre-gray"
+                } w-32 mx-4 md:mx-10  py-2 rounded-full md:w-fit md:text-xl md:px-10`}
               >
                 Exchange
               </button>
@@ -437,19 +491,17 @@ export default function Home() {
    * When our component first mounts, let's check to see if we have a connected
    * Phantom Wallet
    */
-  useEffect(() => {
-    const onLoad = async () => {
-      await checkIfWalletIsConnected();
-    };
-    window.addEventListener("load", onLoad);
-    return () => window.removeEventListener("load", onLoad);
-  }, []);
+  // useEffect(() => {
+  //   const onLoad = async () => {
+  //     await checkIfWalletIsConnected();
+  //   };
+  //   window.addEventListener("load", onLoad);
+  //   return () => window.removeEventListener("load", onLoad);
+  // }, []);
 
   const getConnection = () => {
     // const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST; // This is only for the env variable once deployed
-    const rpcHost = "http://127.0.0.1:8899/";
-    // Create a new connection object
-    const connection = new Connection(rpcHost!!);
+
     return connection;
   };
 
