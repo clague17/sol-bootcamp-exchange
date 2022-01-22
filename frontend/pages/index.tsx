@@ -499,7 +499,7 @@ export default function Home() {
   return (
     // I could use kyogre-blue-light for the background or just plain black :'/ i wonder which looks better.
     // The outer container NEEDS to be relative!
-    <div className="relative flex-col items-center justify-between min-h-screen pt-14 px-5 md:px-20 bg-black overflow-hidden">
+    <div className="relative flex-col items-center justify-between min-h-screen sm:pt-14 px-5 md:px-20 bg-black overflow-hidden">
       <Head>
         <title>pokèDEX</title>
         <link rel="icon" href="/favicon.ico" />
