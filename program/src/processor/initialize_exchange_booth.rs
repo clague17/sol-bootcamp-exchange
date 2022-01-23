@@ -67,40 +67,6 @@ pub fn process(
         "Incorrect Exchange Booth account input"
     );
 
-    // now we can check the pdas are correct for the vaults
-
-    let (vault_a_pda, vault_a_bump) = Pubkey::find_program_address(
-        &[
-            b"vault_a",
-            admin.key.as_ref(),
-            mint_a.key.as_ref(),
-            eb_ai.key.as_ref()
-        ],
-        program_id
-    );
-
-    let (vault_b_pda, vault_b_bump) = Pubkey::find_program_address(
-        &[
-            b"vault_b",
-            admin.key.as_ref(),
-            mint_b.key.as_ref(),
-            eb_ai.key.as_ref()
-        ],
-        program_id
-    );
-
-    assert_with_msg(
-        *vault_a.key == vault_a_pda, 
-        ProgramError::IncorrectProgramId, 
-        "Incorrect Vault"
-    );
-
-    assert_with_msg(
-        *vault_b.key == vault_b_pda, 
-        ProgramError::IncorrectProgramId, 
-        "Incorrect Vault"
-    );
-
     // allocating exchange booth: 
     // invoke the system program in order to create the account that houses the EB struct
     invoke_signed(

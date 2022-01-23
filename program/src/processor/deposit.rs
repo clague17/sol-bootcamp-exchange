@@ -27,8 +27,8 @@ pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> Program
 pub fn process(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    amount_a: u8,
-    amount_b: u8
+    amount_a: u64,
+    amount_b: u64
 ) -> ProgramResult {
     /* 
     * This program will take in the admin account and use the token program to move funds
@@ -43,11 +43,10 @@ pub fn process(
     let admin_token_b_acc = next_account_info(accounts_iter)?;
     let vault_a = next_account_info(accounts_iter)?;
     let vault_b = next_account_info(accounts_iter)?;
-    let mint_a = next_account_info(accounts_iter)?;
-    let mint_b = next_account_info(accounts_iter)?;
     let token_program = next_account_info(accounts_iter)?;
 
-    let eb = ExchangeBooth::try_from_slice(&eb_ai.data.borrow())?;
+    msg!("We're here! And the eb_ai address is here: {:?}", eb_ai.key);
+    let eb = ExchangeBooth::try_from_slice(&eb_ai.try_borrow_data()?)?;
 
     assert_with_msg(
         *admin_ai.key == eb.admin, 
@@ -55,45 +54,12 @@ pub fn process(
         "Incorrect Admin"
     )?;
 
-    // finding the two vaults pdas
-    let (vault_a_pda, vault_a_bump) = Pubkey::find_program_address(
-        &[
-            b"vault_a",
-            admin_ai.key.as_ref(),
-            mint_a.key.as_ref(),
-            eb_ai.key.as_ref()
-        ],
-        program_id
-    );
 
-    let (vault_b_pda, vault_b_bump) = Pubkey::find_program_address(
-        &[
-            b"vault_b",
-            admin_ai.key.as_ref(),
-            mint_b.key.as_ref(),
-            eb_ai.key.as_ref()
-        ],
-        program_id
-    );
-
-    assert_with_msg(
-        *vault_a.key == vault_a_pda, 
-        ProgramError::IncorrectProgramId, 
-        "Incorrect Vault"
-    )?;
-
-    assert_with_msg(
-        *vault_b.key == vault_b_pda, 
-        ProgramError::IncorrectProgramId, 
-        "Incorrect Vault"
-    )?;
-
-    // Now we have valid pdas for vault, we need to know how much to deposit where
     // do a token transfer from admin to vault a for amount_a
     let transfer_from_admin_to_vault_a_ix = spl_token::instruction::transfer(
         token_program.key,
         admin_token_a_acc.key,
-        &vault_a_pda,
+        &vault_a.key,
         admin_ai.key, // The owner of the admin account
         &[&admin_ai.key],
         amount_a.try_into().unwrap()
@@ -102,13 +68,13 @@ pub fn process(
     let transfer_from_admin_to_vault_b_ix = spl_token::instruction::transfer(
         token_program.key,
         admin_token_b_acc.key,
-        &vault_b_pda,
+        &vault_b.key,
         admin_ai.key, // The owner of the admin account
         &[&admin_ai.key],
         amount_b.try_into().unwrap()
     )?;
 
-    msg!("Transfering {} tokens from admin to vault_a: {}", amount_a, vault_a_pda);
+    msg!("Transfering {} tokens from admin to vault_a: {}", amount_a, vault_a.key);
 
     invoke(
         &transfer_from_admin_to_vault_a_ix,
@@ -117,7 +83,7 @@ pub fn process(
         ],
     )?;
 
-    msg!("Transfering {} tokens from admin to vault_b: {}", amount_b, vault_b_pda);
+    msg!("Transfering {} tokens from admin to vault_b: {}", amount_b, vault_b.key);
 
     invoke(
         &transfer_from_admin_to_vault_b_ix,

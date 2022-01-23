@@ -43,10 +43,10 @@ const EB_PROGRAM_ID = new PublicKey(
 );
 
 const mint_a_pubkey = new PublicKey(
-  "5fdBsfxTHjG5Xm2aMKsVvfUxnxTthqW4FCQf4U6c65CA"
+  "GDzb2xqVMKpvGCPvn6fbF8fUM7v2esLgfEHTZaviMDWw"
 );
 const mint_b_pubkey = new PublicKey(
-  "qjuVW4GKwqGFpgvj2YhRuXSizbU2haTuexiMu6X2fD5"
+  "4gKh39rZmrB71xf34tAVwxfpZaSatm4Yvv55A5DqXYkS"
 );
 
 const SWAP_FEE = 0.2; // will definitely have to play with the decimals on this
@@ -254,7 +254,6 @@ const initializeVaults = async (
 
   console.log("Vault A: ", vault_a_key);
   console.log("Vault B: ", vault_b_key);
-  return [vault_a_key, vault_b_key];
 
   let vault_a_account_ix = Token.createAssociatedTokenAccountInstruction(
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -407,10 +406,10 @@ const adminDepositTokensManual = async (
   let depositIdx = Buffer.from(new Uint8Array([1]));
 
   let depositAmountA = Buffer.from(
-    new Uint8Array(new BN(depositAmount).toArray("le", 8)) // 6 decimals for both mints :)
+    new Uint8Array(new BN(depositAmount * 10 ** 6).toArray("le", 8)) // 6 decimals for both mints :)
   );
   let depositAmountB = Buffer.from(
-    new Uint8Array(new BN(depositAmount).toArray("le", 8)) // 6 decimals for both mints :)
+    new Uint8Array(new BN(depositAmount * 10 ** 6).toArray("le", 8)) // 6 decimals for both mints :)
   );
 
   let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
@@ -422,34 +421,32 @@ const adminDepositTokensManual = async (
     ],
     EB_PROGRAM_ID
   );
-  console.log("ebPDA: ", ebPDA);
+  console.log("ebPDA: ", ebPDA.toBase58());
 
-  let [vault_a_pda, vault_a_bump] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from("vault_a"),
-      adminWallet.publicKey.toBuffer(),
-      mint_a_pubkey.toBuffer(),
-      ebPDA.toBuffer(),
-    ],
-    EB_PROGRAM_ID
-  );
+  let vault_a_key = await Token.getAssociatedTokenAddress(
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint_a_pubkey,
+    ebPDA,
+    true
+  ).then((res) => res.toBase58());
 
-  let [vault_b_pda, vault_b_bump] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from("vault_b"),
-      adminWallet.publicKey.toBuffer(),
-      mint_b_pubkey.toBuffer(),
-      ebPDA.toBuffer(),
-    ],
-    EB_PROGRAM_ID
-  );
+  let vault_b_key = await Token.getAssociatedTokenAddress(
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint_b_pubkey,
+    ebPDA,
+    true
+  ).then((res) => res.toBase58());
+
+  console.log("vaults: ", vault_a_key, vault_b_key);
 
   let adminATokenAccount = new PublicKey(
-    "tR1HRHxszVh2TvSertDBMX4nA9t2T67zu2cmhaYZtH3"
+    "4B8DnJeLAD8yzC229p3ErVcTAvwaqDc1QQrUFnwboP4g"
   );
 
   let adminBTokenAccount = new PublicKey(
-    "GLZRFceu3exufdYkjwTsimR5SqXWYtQBUbWS7wM71syT"
+    "63yhPxt5XEwRZntStvjDqTHGK53RhUDpTfS8SQDVAn4Q"
   );
 
   console.log("Sending the deposit instruction!");
@@ -460,10 +457,8 @@ const adminDepositTokensManual = async (
       { pubkey: adminWallet.publicKey, isSigner: true, isWritable: false },
       { pubkey: adminATokenAccount, isSigner: false, isWritable: true },
       { pubkey: adminBTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: vault_a_pda, isSigner: false, isWritable: true },
-      { pubkey: vault_b_pda, isSigner: false, isWritable: true },
-      { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
-      { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
+      { pubkey: new PublicKey(vault_a_key), isSigner: false, isWritable: true },
+      { pubkey: new PublicKey(vault_b_key), isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     programId: EB_PROGRAM_ID,
@@ -543,26 +538,23 @@ const transferTokens = async (
     EB_PROGRAM_ID
   );
 
-  console.log("Finding vault PDAs...");
+  console.log("Finding vault Addresses...");
 
-  let [vault_a_pda, vault_a_bump] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from("vault_a"),
-      adminWallet.publicKey.toBuffer(),
-      mint_a_pubkey.toBuffer(),
-      ebPDA.toBuffer(),
-    ],
-    EB_PROGRAM_ID
+  // The vaults here are NOT PDAs, they are just token accounts that are owned by the exchange Booth, which itself is a PDA. In order to sign for transactions, the exchange booth can do it, which is fine since it itself is a PDA and can sign for stuff itself
+
+  let vault_a_key = await Token.getAssociatedTokenAddress(
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint_a_pubkey,
+    ebPDA,
+    true
   );
-
-  let [vault_b_pda, vault_b_bump] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from("vault_b"),
-      adminWallet.publicKey.toBuffer(),
-      mint_b_pubkey.toBuffer(),
-      ebPDA.toBuffer(),
-    ],
-    EB_PROGRAM_ID
+  let vault_b_key = await Token.getAssociatedTokenAddress(
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    mint_b_pubkey,
+    ebPDA,
+    true
   );
 
   let bobFromTokenAccount = new PublicKey(
@@ -581,8 +573,8 @@ const transferTokens = async (
       { pubkey: bobWallet.publicKey, isSigner: true, isWritable: false },
       { pubkey: bobFromTokenAccount, isSigner: false, isWritable: true },
       { pubkey: bobToTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: vault_a_pda, isSigner: false, isWritable: true },
-      { pubkey: vault_b_pda, isSigner: false, isWritable: true },
+      { pubkey: vault_a_key, isSigner: false, isWritable: true },
+      { pubkey: vault_b_key, isSigner: false, isWritable: true },
       { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
       { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
       { pubkey: oracleKey, isSigner: false, isWritable: false },
