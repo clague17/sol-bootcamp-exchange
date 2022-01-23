@@ -1,4 +1,4 @@
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{BorshSerialize};
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -7,16 +7,11 @@ use solana_program::{
     msg,
     program_error::ProgramError,
     pubkey::Pubkey,
-    system_program::ID as SYSTEM_PROGRAM_ID,
     sysvar::{rent::Rent, Sysvar},
     program::{invoke_signed},
 };
-use spl_token::{
-    solana_program::program_pack::Pack,
-    state::{Account as SplTokenAccount, Mint},
-};
+
 use crate::{
-    error::ExchangeBoothError,
     state::ExchangeBooth as ExchangeBooth
 };
 use std::mem::size_of;
@@ -36,7 +31,6 @@ pub fn process(
     _instruction_data: &[u8],
     fee: u8
 ) -> ProgramResult {
-    const token_account_size: usize = 165; 
     let accounts_iter = &mut accounts.iter();
 
     // need to create token account for a, b
@@ -47,7 +41,6 @@ pub fn process(
     let vault_b = next_account_info(accounts_iter)?; // really just a token account for B
     let oracle = next_account_info(accounts_iter)?;
     let system_program = next_account_info(accounts_iter)?;
-    let token_program = next_account_info(accounts_iter)?; // Dont actually need this since Initializing the mints was done on the frontend
     let eb_ai = next_account_info(accounts_iter)?;
    
     // find the exchange booth PDA
@@ -65,7 +58,7 @@ pub fn process(
         eb_pda == *eb_ai.key, 
         ProgramError::IncorrectProgramId, 
         "Incorrect Exchange Booth account input"
-    );
+    )?;
 
     // allocating exchange booth: 
     // invoke the system program in order to create the account that houses the EB struct
@@ -89,7 +82,7 @@ pub fn process(
     )?;
 
     // finally serialize the struct into the space allocated by the system instruction
-    let mut eb = ExchangeBooth {
+    let eb = ExchangeBooth {
         admin: *admin.key,
         vault_a: *vault_a.key,
         vault_b:  *vault_b.key,
@@ -97,7 +90,7 @@ pub fn process(
         fee: fee
     };
 
-    eb.serialize(&mut *eb_ai.data.borrow_mut());
+    eb.serialize(&mut *eb_ai.data.borrow_mut())?;
 
     Ok(())
 }

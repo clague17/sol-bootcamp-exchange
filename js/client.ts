@@ -455,6 +455,8 @@ const adminDepositTokensManual = async (
     keys: [
       { pubkey: ebPDA, isSigner: false, isWritable: false },
       { pubkey: adminWallet.publicKey, isSigner: true, isWritable: false },
+      { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
+      { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
       { pubkey: adminATokenAccount, isSigner: false, isWritable: true },
       { pubkey: adminBTokenAccount, isSigner: false, isWritable: true },
       { pubkey: new PublicKey(vault_a_key), isSigner: false, isWritable: true },
@@ -736,11 +738,6 @@ const main = async () => {
     },
     {
       pubkey: SystemProgram.programId,
-      isSigner: false,
-      isWritable: false,
-    },
-    {
-      pubkey: TOKEN_PROGRAM_ID,
       isSigner: false,
       isWritable: false,
     },

@@ -39,6 +39,8 @@ pub fn process(
 
     let eb_ai = next_account_info(accounts_iter)?;
     let admin_ai = next_account_info(accounts_iter)?;
+    let mint_a = next_account_info(accounts_iter)?;
+    let mint_b = next_account_info(accounts_iter)?;
     let admin_token_a_acc = next_account_info(accounts_iter)?;
     let admin_token_b_acc = next_account_info(accounts_iter)?;
     let vault_a = next_account_info(accounts_iter)?;
@@ -46,14 +48,6 @@ pub fn process(
     let token_program = next_account_info(accounts_iter)?;
 
     msg!("We're here! And the eb_ai address is here: {:?}", eb_ai.key);
-    let eb = ExchangeBooth::try_from_slice(&eb_ai.try_borrow_data()?)?;
-
-    assert_with_msg(
-        *admin_ai.key == eb.admin, 
-        ProgramError::IncorrectProgramId,
-        "Incorrect Admin"
-    )?;
-
 
     // do a token transfer from admin to vault a for amount_a
     let transfer_from_admin_to_vault_a_ix = spl_token::instruction::transfer(
@@ -88,7 +82,7 @@ pub fn process(
     invoke(
         &transfer_from_admin_to_vault_b_ix,
         &[
-            admin_ai.clone(), admin_token_a_acc.clone(), vault_a.clone(), token_program.clone(),
+            admin_ai.clone(), admin_token_b_acc.clone(), vault_b.clone(), token_program.clone(),
         ],
     )?;
 
