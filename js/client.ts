@@ -43,10 +43,10 @@ const EB_PROGRAM_ID = new PublicKey(
 );
 
 const mint_a_pubkey = new PublicKey(
-  "EKb3go1qvctvBKcQoSCUyKkWAMVySwX9yJhybANpqBw5"
+  "5fdBsfxTHjG5Xm2aMKsVvfUxnxTthqW4FCQf4U6c65CA"
 );
 const mint_b_pubkey = new PublicKey(
-  "fJdfVE7SEDyh3fXYrDNwvGw1mEK1k8KrJUGgFzStQtY"
+  "qjuVW4GKwqGFpgvj2YhRuXSizbU2haTuexiMu6X2fD5"
 );
 
 const SWAP_FEE = 0.2; // will definitely have to play with the decimals on this
@@ -236,6 +236,7 @@ const initializeVaults = async (
   eb_pda: PublicKey
 ) => {
   // get the two vaults:
+  console.log("In InitializeVaults:");
   let vault_a_key = await Token.getAssociatedTokenAddress(
     ASSOCIATED_TOKEN_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
@@ -250,6 +251,10 @@ const initializeVaults = async (
     eb_pda,
     true
   );
+
+  console.log("Vault A: ", vault_a_key);
+  console.log("Vault B: ", vault_b_key);
+  return [vault_a_key, vault_b_key];
 
   let vault_a_account_ix = Token.createAssociatedTokenAccountInstruction(
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -397,13 +402,15 @@ const adminDepositTokensManual = async (
   console.log("Execute Deposit Tokens");
 
   console.log("Creating deposits instruction...");
+  const depositAmount = 2;
 
-  let exchangeIdx = Buffer.from(new Uint8Array([1]));
+  let depositIdx = Buffer.from(new Uint8Array([1]));
+
   let depositAmountA = Buffer.from(
-    new Uint8Array(new BN(2).toArray("le", 8)) // 6 decimals for both mints :)
+    new Uint8Array(new BN(depositAmount).toArray("le", 8)) // 6 decimals for both mints :)
   );
   let depositAmountB = Buffer.from(
-    new Uint8Array(new BN(2).toArray("le", 8)) // 6 decimals for both mints :)
+    new Uint8Array(new BN(depositAmount).toArray("le", 8)) // 6 decimals for both mints :)
   );
 
   let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
@@ -415,6 +422,7 @@ const adminDepositTokensManual = async (
     ],
     EB_PROGRAM_ID
   );
+  console.log("ebPDA: ", ebPDA);
 
   let [vault_a_pda, vault_a_bump] = await PublicKey.findProgramAddress(
     [
@@ -437,16 +445,16 @@ const adminDepositTokensManual = async (
   );
 
   let adminATokenAccount = new PublicKey(
-    "9qF6A3GPNjaJGFe78FLVahw9Lxbh4DJWGM2sW2BuixgW"
+    "tR1HRHxszVh2TvSertDBMX4nA9t2T67zu2cmhaYZtH3"
   );
 
   let adminBTokenAccount = new PublicKey(
-    "2DHCA76iJWFmTvdyvriGSUoVvy9pKyxJnv9ZrKj2ZRpX"
+    "GLZRFceu3exufdYkjwTsimR5SqXWYtQBUbWS7wM71syT"
   );
 
-  console.log("Sending the exchange instruction!");
+  console.log("Sending the deposit instruction!");
 
-  let exchangeIx = new TransactionInstruction({
+  let depositIx = new TransactionInstruction({
     keys: [
       { pubkey: ebPDA, isSigner: false, isWritable: false },
       { pubkey: adminWallet.publicKey, isSigner: true, isWritable: false },
@@ -459,12 +467,12 @@ const adminDepositTokensManual = async (
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     programId: EB_PROGRAM_ID,
-    data: Buffer.concat([exchangeIdx, depositAmountA, depositAmountB]),
+    data: Buffer.concat([depositIdx, depositAmountA, depositAmountB]),
   });
 
   // make the tx
   let exchangeTx = new Transaction();
-  exchangeTx.add(exchangeIx);
+  exchangeTx.add(depositIx);
 
   console.log("Sending transaction...");
 
@@ -480,6 +488,7 @@ const adminDepositTokensManual = async (
   );
 
   // tx url on devnet
+  console.log(`Deposit of ${depositAmount} to vault_a and vault_b confirmed:`);
   console.log(`https://explorer.solana.com/tx/${exchangeTxid}?cluster=devnet`);
 
   logBalances(connection, adminWallet.publicKey, ebPDA);
@@ -609,16 +618,18 @@ const transferTokens = async (
 const main = async () => {
   var args = process.argv.slice(2);
   const shouldAirdrop = parseInt(args[0]);
-  const shouldCreateOracle = parseInt(args[1]);
-  const shouldDepositTokens = parseInt(args[2]);
-  const shouldTransferTokens = parseInt(args[3]);
-  const debug = parseInt(args[4]);
+  const shouldInitExchangeBooth = parseInt(args[1]);
+  const shouldCreateOracle = parseInt(args[2]);
+  const shouldDepositTokens = parseInt(args[3]);
+  const shouldTransferTokens = parseInt(args[4]);
+  const debug = parseInt(args[5]);
   // const shouldInitTokens = parseInt(args[1]);
   // const echo = args[1];
   // const price = parseInt(args[2]);
   console.log(
     `Received args:
     shouldAirdrop: ${shouldAirdrop == 1}
+    shouldInitExchangeBooth: ${shouldInitExchangeBooth == 1}
     shouldCreateOracle: ${shouldCreateOracle == 1}
     shouldDepositTokens: ${shouldDepositTokens == 1}
     shouldTransferTokens: ${shouldTransferTokens == 1}
@@ -662,6 +673,10 @@ const main = async () => {
     bob_token_a_account: AccountInfo<any>;
   };
 
+  if (shouldInitExchangeBooth) {
+    console.log("Instruction: Initializing Exchange Booth!");
+  }
+
   const [mint_a, mint_b] = await initTokens(
     connection,
     adminWallet,
@@ -683,6 +698,8 @@ const main = async () => {
     EB_PROGRAM_ID
   );
 
+  console.log("Exchange booth address: ", ebPDA);
+
   const [vault_a_key, vault_b_key] = await initializeVaults(
     connection,
     adminWallet,
@@ -690,7 +707,7 @@ const main = async () => {
     mint_b,
     ebPDA
   );
-
+  return;
   // Now we have initialized the two vaults!
 
   // Creating the Exchange Booth Instruction

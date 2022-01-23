@@ -1,1 +1,8 @@
-{"mint_a":"EKb3go1qvctvBKcQoSCUyKkWAMVySwX9yJhybANpqBw5","mint_b":"fJdfVE7SEDyh3fXYrDNwvGw1mEK1k8KrJUGgFzStQtY","admin_token_a_account":"9qF6A3GPNjaJGFe78FLVahw9Lxbh4DJWGM2sW2BuixgW","admin_token_b_account":"2DHCA76iJWFmTvdyvriGSUoVvy9pKyxJnv9ZrKj2ZRpX","bob_token_a_account":"6hcnn8xvprgFywLx5T5cuTX3RdrEDbLNxEcMuZhyAtMm","bob_token_b_account":"EY8swj1gUM8Bv88Jym84vtXLvFjALa2Krb7mSMLHvFcv"}
+{
+  "mint_a": "5fdBsfxTHjG5Xm2aMKsVvfUxnxTthqW4FCQf4U6c65CA",
+  "mint_b": "qjuVW4GKwqGFpgvj2YhRuXSizbU2haTuexiMu6X2fD5",
+  "admin_token_a_account": "tR1HRHxszVh2TvSertDBMX4nA9t2T67zu2cmhaYZtH3",
+  "admin_token_b_account": "GLZRFceu3exufdYkjwTsimR5SqXWYtQBUbWS7wM71syT",
+  "bob_token_a_account": "3BXkBZkZ2dCNtzaGzCFFjGVMA592Wb24GmDo3LadyRGe",
+  "bob_token_b_account": "5UXCnUoayQ48MLrFf7aY4wwzcQc3C5khNAoFSdC7SQ5c"
+}
