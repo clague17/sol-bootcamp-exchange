@@ -23,13 +23,10 @@ import { getMint } from "./util";
 // Debug niceties
 const initTokensFilePath = "../debug_utils/init_token_accounts.json";
 const initOracleFilePath = "../debug_utils/init_oracle_account.json";
+const ebFilePath = "../debug_utils/init_eb_account.json";
 
 const tokenAccountsData = require("../debug_utils/init_token_accounts.json");
 const oracleAccountData = require("../debug_utils/init_oracle_account.json");
-
-const ORACLE_PROGRAM_ID = new PublicKey(
-  "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
-);
 const { BN } = require("bn.js");
 
 // Quick changing to dev and local nets
@@ -869,6 +866,16 @@ const main = async () => {
   console.log(
     `Init Exchange Booth Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
   );
+
+  if (debug == 1) {
+    let payload = {
+      exchange_buffer_address: ebPDA.toBase58(),
+    };
+
+    writeFile(ebFilePath, JSON.stringify(payload))
+      .then(() => console.log(`Wrote EB info to ${ebFilePath}\n`))
+      .catch((err) => console.log(`Error writing EB Info to ${ebFilePath}\n`));
+  }
 };
 
 main()

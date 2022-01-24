@@ -36,7 +36,7 @@ import {
 } from "@solana/spl-token";
 
 // config constants for ease of use:
-const ebPDA = new PublicKey("pzsLHGDLqpgQ21ezdTQkgiGgUxUyhxkqkk87UY5RgBr"); // The exchange booth pda
+const ebPDA = new PublicKey("Auw3QzqeyNKEWUJy2wZe4c3pyiTKqc5qtoga5ZmvHGiN"); // The exchange booth pda
 const mint_a_pubkey = new PublicKey(tokenAccountsData.mint_a as string);
 const mint_b_pubkey = new PublicKey(tokenAccountsData.mint_b as string);
 const oracleKey = new PublicKey(
@@ -127,6 +127,7 @@ export default function Home() {
 
   const checkIfWalletIsConnected = async (): Promise<PhantomProvider | null> => {
     try {
+      console.log("Check if wallet is connected");
       const { solana } = window as any;
 
       if (solana) {
@@ -188,7 +189,7 @@ export default function Home() {
     let ata = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
-      new PublicKey(pokemonB.tokenAddress),
+      new PublicKey(pokemonA.tokenAddress),
       new PublicKey(walletAddress.toString())
     );
 
@@ -208,11 +209,11 @@ export default function Home() {
     }
 
     // let userBBalance = await connection.getTokenAccountBalance(ata);
-    let userBBalance = await connection.getTokenAccountBalance(ata);
+    let userABalance = await connection.getTokenAccountBalance(ata);
 
-    setUserMaxAmountA(userBBalance.value.uiAmount!!); // In this case, we want to set amount A for the B balance, for the reasons above
+    setUserMaxAmountA(userABalance.value.uiAmount!!); // In this case, we want to set amount A for the B balance, for the reasons above
 
-    setIsExchangeButtonEnabled(userBBalance.value.uiAmount!! > 0);
+    setIsExchangeButtonEnabled(userABalance.value.uiAmount!! > 0);
   };
 
   const maybeExchangeTokens = async (swapAmount: number) => {
@@ -320,7 +321,7 @@ export default function Home() {
 
     if (solana) {
       const response = await solana.connect();
-      setWalletAddress(response.publicKey.toString());
+      setWalletAddress(response.publicKey);
     }
   };
 
