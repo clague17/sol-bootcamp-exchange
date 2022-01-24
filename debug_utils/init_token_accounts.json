@@ -1,1 +1,8 @@
-{"mint_a":"2a7r8L6PHsCbgKoAMHU49m1Xz7PD8RoExexpNyLm4XUH","mint_b":"5y8Log5m3GQmAfLgoEjcPEdRqdenHJKR7xhig3RoYHBz","admin_token_a_account":"F6tQTbnYR4uEJTNCeu8cjvc2YZS8oitoGsLyZuWC2azz","admin_token_b_account":"6YBCSxqb36ciXRq5zs3GPMzygoHnCMYJ3HA9PQJPJqZp","bob_token_a_account":"9yqXkMB1vVYpRCPBBBBnC5wGY1WMWJKSXDAjeZBFrVx3","bob_token_b_account":"FvcJRjPDwZmM5QAF8D6arHQeaTft97kS2UeCcVkZj2J1"}
+{
+  "mint_a": "2a7r8L6PHsCbgKoAMHU49m1Xz7PD8RoExexpNyLm4XUH",
+  "mint_b": "5y8Log5m3GQmAfLgoEjcPEdRqdenHJKR7xhig3RoYHBz",
+  "admin_token_a_account": "F6tQTbnYR4uEJTNCeu8cjvc2YZS8oitoGsLyZuWC2azz",
+  "admin_token_b_account": "6YBCSxqb36ciXRq5zs3GPMzygoHnCMYJ3HA9PQJPJqZp",
+  "bob_token_a_account": "9yqXkMB1vVYpRCPBBBBnC5wGY1WMWJKSXDAjeZBFrVx3",
+  "bob_token_b_account": "FvcJRjPDwZmM5QAF8D6arHQeaTft97kS2UeCcVkZj2J1"
+}

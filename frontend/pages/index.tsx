@@ -10,7 +10,7 @@ import { Transition, Listbox } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/solid";
 import PokedexBanner from "../assets/pokedex-header.png";
 import TradeButton from "../assets/trade.png";
-import SwapButton from "../assets/swap.png";
+import Link from "next/link";
 import { PhantomProvider } from "../utils/phantom";
 import toast, { Toaster } from "react-hot-toast";
 const { BN } = require("bn.js");
@@ -301,11 +301,23 @@ export default function Home() {
     addLog("Got signature, submitting transaction");
     let signature = await connection.sendRawTransaction(signed!!.serialize());
     addLog("Submitted transaction " + signature + ", awaiting confirmation");
-    toast.promise(connection.confirmTransaction(signature), {
-      success: "Success!",
-      error: "Error",
-      loading: "Loading Confirmation",
-    });
+    toast.promise(
+      connection.confirmTransaction(signature),
+      {
+        success: "Success!",
+        error: "Error",
+        loading: "Loading Confirmation",
+      },
+      {
+        style: {
+          background: "#363636",
+          color: "#fff",
+        },
+        success: {
+          duration: 5000, // overwrite from the standard 2000
+        },
+      }
+    );
     // success toast Here!
     checkTokenBalance(walletAddress!!);
     addLog("Transaction " + signature + " confirmed");
@@ -356,7 +368,7 @@ export default function Home() {
             pokemonB.name == PokemonList[0].name
               ? "from-kyogre-blue-light"
               : "from-kyogre-red"
-          } absolute mx-auto blur-xl -inset-1 bg-gradient-to-t  w-full md:w-132 rounded-2xl opacity-75 group-hover:opacity-100 transition duration-200`}
+          } absolute mx-auto blur-xl -inset-1 bg-gradient-to-t w-full md:w-132 rounded-2xl opacity-75 group-hover:opacity-100 transition duration-200`}
         ></div>
         <div className="relative mx-auto w-full md:w-132 space-y-3 flex-col bg-gradient-radial from-blue-600 to-blue-900 rounded-2xl">
           <div className="flex md:mx-5 max-h-[163px] py-5 rounded-2xl justify-between">
@@ -592,7 +604,12 @@ export default function Home() {
     // The outer container NEEDS to be relative!
     <div>
       <div>
-        <Toaster />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            className: "bg-gradient-radial from-blue-600 to-blue-900",
+          }}
+        />
       </div>
       <div className="relative flex-col items-center justify-between min-h-screen sm:pt-14 px-5 md:px-20 bg-black overflow-hidden">
         <Head>
@@ -604,6 +621,14 @@ export default function Home() {
           {!walletAddress && renderNotConnectedContainer()}
         </div>
         {walletAddress && renderSwapContainer()}
+        <div className="flex justify-center my-4">
+          <div className="flex text-white bg-gradient-radial from-blue-600 to-blue-900 p-3 rounded-xl">
+            <Link href="first_time">
+              <p>First time here?</p>
+            </Link>
+          </div>
+        </div>
+
         <footer className="flex mt-10 items-center justify-center w-full fixed bottom-0 left-0">
           <a
             className="flex items-center justify-center text-white font-bold"
