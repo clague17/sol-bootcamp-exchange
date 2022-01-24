@@ -359,7 +359,7 @@ const createOracle = async (
   );
 
   console.log(
-    `Init Exchange Booth Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
+    `Init Oracle Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
   );
 
   let data = (
@@ -381,6 +381,74 @@ const createOracle = async (
   }
 
   // send the transaction, keeping track of that oracle key
+};
+
+const updateOraclePrice = async (
+  connection: Connection,
+  adminWallet: Keypair,
+  debug: number
+) => {
+  console.log("Updating oracle rate");
+  let echoBuffer = new PublicKey(
+    oracleAccountData.oracle_buffer_address as string
+  );
+  const echoInstruction = Buffer.from(new Uint8Array([0]));
+  const tokenAmount1 = 1 * 10 ** 6;
+  const tokenAmount2 = 2 * 10 ** 6;
+  const oracleData = Buffer.concat([
+    Buffer.from(new Uint8Array(new BN(tokenAmount1).toArray("le", 8))),
+    Buffer.from(new Uint8Array(new BN(tokenAmount2).toArray("le", 8))),
+  ]);
+
+  const dataLen = Buffer.from(
+    new Uint8Array(new BN(oracleData.length).toArray("le", 4))
+  );
+
+  let echoIx = new TransactionInstruction({
+    keys: [
+      {
+        pubkey: echoBuffer,
+        isSigner: false,
+        isWritable: true,
+      },
+    ],
+    programId: oracleProgramId,
+    data: Buffer.concat([echoInstruction, dataLen, oracleData]),
+  });
+
+  const tx = new Transaction();
+  tx.add(echoIx);
+
+  let txid = await sendAndConfirmTransaction(
+    connection,
+    tx,
+    [adminWallet], //adminWallet is just an arbitrary mint Authority, could be anyone!
+    {
+      skipPreflight: true,
+      preflightCommitment: "confirmed",
+      commitment: "confirmed",
+    }
+  );
+
+  console.log(
+    `Update Oracle Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
+  );
+
+  let data = (await connection.getAccountInfo(echoBuffer, "confirmed"))?.data;
+  console.log("Echo Buffer Text:", data?.toString("utf16le"));
+
+  if (debug == 1) {
+    let payload = {
+      oracle_buffer_address: echoBuffer.toBase58(),
+      oracle_buffer_data: data?.toString("utf16le"),
+    };
+
+    writeFile(initOracleFilePath, JSON.stringify(payload))
+      .then(() => console.log(`Wrote Oracle Info to ${initOracleFilePath}\n`))
+      .catch((err) =>
+        console.log(`Error writing Oracle Info to ${initOracleFilePath}\n`)
+      );
+  }
 };
 
 const logBalances = async (
@@ -646,7 +714,8 @@ const main = async () => {
   const shouldCreateOracle = parseInt(args[2]);
   const shouldDepositTokens = parseInt(args[3]);
   const shouldExchangeTokens = parseInt(args[4]);
-  const debug = parseInt(args[5]);
+  const shouldUpdateOraclePrice = parseInt(args[5]);
+  const debug = parseInt(args[6]);
   // const shouldInitTokens = parseInt(args[1]);
   // const echo = args[1];
   // const price = parseInt(args[2]);
@@ -657,6 +726,7 @@ const main = async () => {
     shouldCreateOracle: ${shouldCreateOracle == 1}
     shouldDepositTokens: ${shouldDepositTokens == 1}
     shouldTransferTokens: ${shouldExchangeTokens == 1}
+    updateOraclePrice: ${shouldUpdateOraclePrice == 1}
     debug: ${debug == 1}\n`
   );
 
@@ -686,6 +756,11 @@ const main = async () => {
 
   if (shouldExchangeTokens === 1) {
     await exchangeTokens(connection, adminWallet, bobWallet);
+    return;
+  }
+
+  if (shouldUpdateOraclePrice === 1) {
+    await updateOraclePrice(connection, adminWallet, debug);
     return;
   }
 

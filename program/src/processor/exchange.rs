@@ -59,8 +59,6 @@ pub fn process(
 
     let customer_from_token_acc = TokenAccount::unpack_from_slice(&customer_from.try_borrow_data()?)?;
 
-    msg!("mint_b deserialized successfully");
-
     let exchange_rate_struct = Oracle::try_from_slice(&oracle.try_borrow_data()?)?;
 
     msg!("oracle deserialized successfully");

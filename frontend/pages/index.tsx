@@ -12,6 +12,7 @@ import PokedexBanner from "../assets/pokedex-header.png";
 import TradeButton from "../assets/trade.png";
 import SwapButton from "../assets/swap.png";
 import { PhantomProvider } from "../utils/phantom";
+import toast, { Toaster } from "react-hot-toast";
 const { BN } = require("bn.js");
 const admin = require("../../debug_utils/admin_wallet.json");
 const tokenAccountsData = require("../../debug_utils/init_token_accounts.json");
@@ -35,7 +36,7 @@ import {
 } from "@solana/spl-token";
 
 // config constants for ease of use:
-const ebPDA = new PublicKey("G1xxYTfe3yPeghnnFnk8ZPZuXzWwSSjXmA9G2Ezf2Ntb"); // The exchange booth pda
+const ebPDA = new PublicKey("pzsLHGDLqpgQ21ezdTQkgiGgUxUyhxkqkk87UY5RgBr"); // The exchange booth pda
 const mint_a_pubkey = new PublicKey(tokenAccountsData.mint_a as string);
 const mint_b_pubkey = new PublicKey(tokenAccountsData.mint_b as string);
 const oracleKey = new PublicKey(
@@ -56,13 +57,13 @@ const PokemonList = [
   new Pokemon(
     "Kyogre",
     KyogreSprite,
-    "Ekm3dm2Fq3ac6ub1XfHrDGGLGH9UT2WZEVPCqpuqaSbj", // this is the mint address
+    tokenAccountsData.mint_a as string, // this is the mint address
     1 // This is the price relative to the other one
   ),
   new Pokemon(
     "Groudon",
     GroudonSprite,
-    "5QeyMtYSoxYwXkfCNCamXPq1arPNreNd4nm4PCeodLaB", // this is the mint
+    tokenAccountsData.mint_b as string, // this is the mint
     2 // This is the price relative to the other one
   ),
 ];
@@ -149,8 +150,6 @@ export default function Home() {
   // TODO fix this hacky. This function and the function below should really just be the same thing, eventually xD
   // SO turns out that this has to check pokemonB, because of the way I'm calling this function in the swap, PokemonB will become pokemonA on re-render after setting the new state, BUT we need to check the token balance before that happens.
   const checkTokenBalance = async (walletAddress: PublicKey) => {
-    console.log("Checking tokens for address: ", walletAddress);
-
     let connection = getConnection();
 
     let ata = await Token.getAssociatedTokenAddress(
@@ -159,8 +158,6 @@ export default function Home() {
       new PublicKey(pokemonB.tokenAddress),
       new PublicKey(walletAddress.toString())
     );
-
-    console.log("ata found: ", ata.toBase58());
 
     let ata_ai = await connection.getAccountInfo(ata);
 
@@ -174,68 +171,59 @@ export default function Home() {
       setUserMaxAmountA(-1);
       setIsExchangeButtonEnabled(false);
       return;
-      // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
+      // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool
     }
 
     // let userBBalance = await connection.getTokenAccountBalance(ata);
     let userBBalance = await connection.getTokenAccountBalance(ata);
-    console.log("Balance found for the ata: ", userBBalance.value?.uiAmount);
 
     setUserMaxAmountA(userBBalance.value.uiAmount!!); // In this case, we want to set amount A for the B balance, for the reasons above
 
     setIsExchangeButtonEnabled(userBBalance.value.uiAmount!! > 0);
-
-    console.log(
-      `Found user balance for coin ${pokemonB.name} with address ${pokemonB.tokenAddress}`,
-      userBBalance
-    );
   };
 
   const initialCheckTokenBalance = async (walletAddress: PublicKey) => {
     let connection = getConnection();
-    console.log("Checking tokens for address: ", walletAddress);
 
     let ata = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
-      new PublicKey(pokemonA.tokenAddress),
-      walletAddress
+      new PublicKey(pokemonB.tokenAddress),
+      new PublicKey(walletAddress.toString())
     );
-
-    console.log("ata found: ", ata.toBase58());
 
     let ata_ai = await connection.getAccountInfo(ata);
 
     if (!ata_ai) {
       console.log(
         `Oopsie, looks like account ${walletAddress.toString()} doesn't have a tokenAccount for the ${
-          pokemonA.name
-        } token with address ${pokemonA.tokenAddress}`
+          pokemonB.name
+        } token with address ${pokemonB.tokenAddress}`
       );
+      // Toast
       setUserMaxAmountA(-1);
       setIsExchangeButtonEnabled(false);
       return;
-      // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool xD
+      // if we're here then the user has never seen this token before. They can't even use the app lol, we should point them to a faucet or something so they can actually use the tool
     }
 
-    let userABalance = await connection.getTokenAccountBalance(ata);
+    // let userBBalance = await connection.getTokenAccountBalance(ata);
+    let userBBalance = await connection.getTokenAccountBalance(ata);
 
-    setUserMaxAmountA(userABalance.value.uiAmount!!);
-    setIsExchangeButtonEnabled(userABalance.value.uiAmount!! > 0);
+    setUserMaxAmountA(userBBalance.value.uiAmount!!); // In this case, we want to set amount A for the B balance, for the reasons above
 
-    console.log(
-      `Found user balance for coin ${pokemonA.name} with address ${pokemonA.tokenAddress}`,
-      userABalance.value.uiAmount!!
-    );
+    setIsExchangeButtonEnabled(userBBalance.value.uiAmount!! > 0);
   };
 
-  const tryExchangeTokens = async (
-    swapAmount: number,
-    walletAddress: PhantomProvider
-  ) => {
+  const maybeExchangeTokens = async (swapAmount: number) => {
     if (!provider?.publicKey) return;
     let connection = getConnection();
-    let mintSigner: Keypair = Keypair.fromSecretKey(Uint8Array.from(admin));
+  };
+
+  const tryExchangeTokens = async (swapAmount: number) => {
+    if (!provider?.publicKey) return;
+    let connection = getConnection();
+    let mintSigner: Keypair = Keypair.fromSecretKey(Uint8Array.from(admin)); // This is only necessary to get the mints, you could argue that's not really necessary to perform the transaction
 
     let fromTokenMintAddress: string = pokemonA.tokenAddress;
     let toTokenMintAddress: string = pokemonB.tokenAddress;
@@ -255,11 +243,11 @@ export default function Home() {
     );
 
     const fromTokenAccount = await fromTokenMint.getOrCreateAssociatedAccountInfo(
-      walletAddress.publicKey as PublicKey
+      provider.publicKey as PublicKey
     );
 
     const toTokenAccount = await toTokenMint.getOrCreateAssociatedAccountInfo(
-      walletAddress.publicKey as PublicKey
+      provider.publicKey as PublicKey
     );
 
     let vault_a_key = await Token.getAssociatedTokenAddress(
@@ -278,7 +266,7 @@ export default function Home() {
     );
 
     let exchangeIdx = Buffer.from(new Uint8Array([3]));
-    // let's do some error checking to make sure swapAmount is not more than the person can do
+    // let's do some error checking to make sure swapAmount is not more than the person can do - FIXEd by the UI :)
     const swapAmountBuff = Buffer.from(
       new Uint8Array(new BN(swapAmount * 10 ** 6).toArray("le", 8))
     );
@@ -289,7 +277,7 @@ export default function Home() {
         { pubkey: vault_b_key, isSigner: false, isWritable: true },
         { pubkey: provider?.publicKey!!, isSigner: true, isWritable: false },
         { pubkey: fromTokenAccount.address, isSigner: false, isWritable: true },
-        { pubkey: toTokenMint.publicKey, isSigner: false, isWritable: true },
+        { pubkey: toTokenAccount.address, isSigner: false, isWritable: true },
         { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
         { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
         { pubkey: oracleKey, isSigner: false, isWritable: false },
@@ -298,15 +286,27 @@ export default function Home() {
       programId: EB_PROGRAM_ID,
       data: Buffer.concat([exchangeIdx, swapAmountBuff]),
     });
+    console.log("Trying to send transaction!");
 
     let exchangeTx = new Transaction();
+    addLog("Getting recent blockhash");
+    const anyTransaction: any = exchangeTx;
+    anyTransaction.recentBlockhash = (
+      await connection.getRecentBlockhash()
+    ).blockhash;
     exchangeTx.add(exchangeIx);
     exchangeTx.feePayer = provider?.publicKey;
     let signed = await provider?.signTransaction(exchangeTx);
     addLog("Got signature, submitting transaction");
     let signature = await connection.sendRawTransaction(signed!!.serialize());
     addLog("Submitted transaction " + signature + ", awaiting confirmation");
-    await connection.confirmTransaction(signature);
+    toast.promise(connection.confirmTransaction(signature), {
+      success: "Success!",
+      error: "Error",
+      loading: "Loading Confirmation",
+    });
+    // success toast Here!
+    checkTokenBalance(walletAddress!!);
     addLog("Transaction " + signature + " confirmed");
     // setUserMaxAmountA(fromTokenAccountBalance.value.uiAmount!!);
   };
@@ -323,11 +323,6 @@ export default function Home() {
       setWalletAddress(response.publicKey.toString());
     }
   };
-
-  // useEffect(() => {
-  //   let b_amount = amountA * a_to_b_ratio;
-  //   setAmountB(b_amount);
-  // }, [amountA]);
 
   const renderNotConnectedContainer = () => {
     return (
@@ -421,10 +416,10 @@ export default function Home() {
             {/* The Number input :) */}
             <div
               className={`${
-                userMaxAmountA >= 0 ? "" : "justify-center"
+                userMaxAmountA > 0 ? "" : "justify-center"
               } flex flex-col`}
             >
-              {userMaxAmountA >= 0 && (
+              {userMaxAmountA > 0 && (
                 <label
                   htmlFor="amountA"
                   className="flex text-md justify-end font-medium text-kyogre-gray mx-3 md:mx-6 py-2 "
@@ -451,11 +446,15 @@ export default function Home() {
                 placeholder="0"
                 value={amountA ? amountA : ""}
                 onChange={(ev: React.ChangeEvent<HTMLInputElement>): void => {
-                  setAmountA(+ev.target.value); // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
+                  let userInput = +ev.target.value;
+                  setAmountA(userInput); // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
                   // based on the oracle price, set the other token's amount necessary for this amount
-                  let b_amount =
-                    +ev.target.value * (pokemonB.price / pokemonA.price);
-                  setAmountB(b_amount);
+                  let b_amount = userInput * (pokemonB.price / pokemonA.price);
+                  let canMakeTrade = userInput <= userMaxAmountA;
+                  if (canMakeTrade) {
+                    setAmountB(b_amount);
+                  }
+                  // setIsExchangeButtonEnabled(canMakeTrade);
                 }}
                 required
               />
@@ -470,7 +469,7 @@ export default function Home() {
             </button>
             <div className="flex flex-col justify-center">
               <button
-                onClick={() => tryExchangeTokens()}
+                onClick={() => tryExchangeTokens(amountA)}
                 disabled={!isExchangeButtonEnabled}
                 className={`${
                   isExchangeButtonEnabled
@@ -547,11 +546,11 @@ export default function Home() {
                 placeholder="0"
                 value={amountB ? amountB : ""}
                 onChange={(ev: React.ChangeEvent<HTMLInputElement>): void => {
-                  setAmountB(+ev.target.value); // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
+                  let userInput = +ev.target.value;
+                  setAmountB(userInput); // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
                   // based on the oracle price, set the other token's amount necessary for this amount
                   let a_amount =
-                    +ev.target.value *
-                    ((1.0 * pokemonA.price) / pokemonB.price);
+                    userInput * ((1.0 * pokemonA.price) / pokemonB.price);
                   setAmountA(a_amount);
                 }}
                 required
@@ -575,44 +574,52 @@ export default function Home() {
     return () => window.removeEventListener("load", onLoad);
   }, []);
 
+  /*
+   * This effect ties the exchange button to whenever the amountA changes, making sure that if the amount ever exceeds the maximum of the token account then the button will be greyed out :)
+   */
+  useEffect(() => {
+    setIsExchangeButtonEnabled(amountA <= userMaxAmountA);
+  }, [amountA]);
+
   const getConnection = () => {
     // const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST; // This is only for the env variable once deployed
-
     return connection;
-  };
-
-  const tryExchange = async () => {
-    let provider = getConnection();
-    let walletAddress = (window as any).solana;
-
-    // do something
   };
 
   return (
     // I could use kyogre-blue-light for the background or just plain black :'/ i wonder which looks better.
     // The outer container NEEDS to be relative!
-    <div className="relative flex-col items-center justify-between min-h-screen sm:pt-14 px-5 md:px-20 bg-black overflow-hidden">
-      <Head>
-        <title>pokèDEX</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <div className="flex flex-col items-center space-y-8 text-white">
-        <Image src={PokedexBanner} />
-        {!walletAddress && renderNotConnectedContainer()}
+    <div>
+      <div>
+        <Toaster />
       </div>
-      {walletAddress && renderSwapContainer()}
-      <footer className="flex mt-10 items-center justify-center w-full fixed bottom-0 left-0">
-        <a
-          className="flex items-center justify-center text-white font-bold"
-          href={TWITTER_LINK}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <Image alt="Twitter Logo" width={35} height={35} src={twitterLogo} />
-          {`built by @${TWITTER_HANDLE}`}
-        </a>
-      </footer>
+      <div className="relative flex-col items-center justify-between min-h-screen sm:pt-14 px-5 md:px-20 bg-black overflow-hidden">
+        <Head>
+          <title>pokèDEX</title>
+          <link rel="icon" href="/favicon.ico" />
+        </Head>
+        <div className="flex flex-col items-center space-y-8 text-white">
+          <Image src={PokedexBanner} />
+          {!walletAddress && renderNotConnectedContainer()}
+        </div>
+        {walletAddress && renderSwapContainer()}
+        <footer className="flex mt-10 items-center justify-center w-full fixed bottom-0 left-0">
+          <a
+            className="flex items-center justify-center text-white font-bold"
+            href={TWITTER_LINK}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Image
+              alt="Twitter Logo"
+              width={35}
+              height={35}
+              src={twitterLogo}
+            />
+            {`built by @${TWITTER_HANDLE}`}
+          </a>
+        </footer>
+      </div>
     </div>
   );
 }
