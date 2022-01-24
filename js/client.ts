@@ -254,8 +254,8 @@ const initializeVaults = async (
     true
   );
 
-  console.log("Vault A: ", vault_a_key);
-  console.log("Vault B: ", vault_b_key);
+  console.log("Vault A: ", vault_a_key.toBase58());
+  console.log("Vault B: ", vault_b_key.toBase58());
 
   let vault_a_account_ix = Token.createAssociatedTokenAccountInstruction(
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -307,8 +307,8 @@ const createOracle = async (
   // let price_data = Buffer.concat([tokenAmountA, tokenAmountB]);
 
   const echoInstruction = Buffer.from(new Uint8Array([0]));
-  const tokenAmount1 = 2 * 10 ** 6;
-  const tokenAmount2 = 3 * 10 ** 6;
+  const tokenAmount1 = 1 * 10 ** 6;
+  const tokenAmount2 = 2 * 10 ** 6;
   const oracleData = Buffer.concat([
     Buffer.from(new Uint8Array(new BN(tokenAmount1).toArray("le", 8))),
     Buffer.from(new Uint8Array(new BN(tokenAmount2).toArray("le", 8))),
@@ -569,6 +569,7 @@ const exchangeTokens = async (
     EB_PROGRAM_ID
   );
 
+  console.log("Exchange");
   console.log("Finding vault Addresses...");
 
   // The vaults here are NOT PDAs, they are just token accounts that are owned by the exchange Booth, which itself is a PDA. In order to sign for transactions, the exchange booth can do it, which is fine since it itself is a PDA and can sign for stuff itself
@@ -606,7 +607,6 @@ const exchangeTokens = async (
       { pubkey: bobWallet.publicKey, isSigner: true, isWritable: false },
       { pubkey: bobFromTokenAccount, isSigner: false, isWritable: true },
       { pubkey: bobToTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: adminWallet.publicKey, isSigner: false, isWritable: false },
       { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
       { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
       { pubkey: oracleKey, isSigner: false, isWritable: false },

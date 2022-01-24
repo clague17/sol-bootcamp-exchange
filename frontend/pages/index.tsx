@@ -12,16 +12,39 @@ import PokedexBanner from "../assets/pokedex-header.png";
 import TradeButton from "../assets/trade.png";
 import SwapButton from "../assets/swap.png";
 import { PhantomProvider } from "../utils/phantom";
+const { BN } = require("bn.js");
 const admin = require("../../debug_utils/admin_wallet.json");
+const tokenAccountsData = require("../../debug_utils/init_token_accounts.json");
+const oracleAccountData = require("../../debug_utils/init_oracle_account.json");
+const a_to_b_ratio = 1.0 / 2; // 2 A for 3 B! b is .33 less valuable
 
 // Solana imports!
 import {
   Connection,
   sendAndConfirmTransaction,
+  Transaction,
+  TransactionInstruction,
   Keypair,
   PublicKey,
 } from "@solana/web3.js";
-import * as splToken from "@solana/spl-token";
+
+import {
+  Token,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+
+// config constants for ease of use:
+const ebPDA = new PublicKey("G1xxYTfe3yPeghnnFnk8ZPZuXzWwSSjXmA9G2Ezf2Ntb"); // The exchange booth pda
+const mint_a_pubkey = new PublicKey(tokenAccountsData.mint_a as string);
+const mint_b_pubkey = new PublicKey(tokenAccountsData.mint_b as string);
+const oracleKey = new PublicKey(
+  oracleAccountData.oracle_buffer_address as string
+);
+const EB_PROGRAM_ID = new PublicKey(
+  "29e799E2EERqux5qDh5YHzXNdTKa3tBbjXSMHx1g5DL2"
+);
+// TODO: host these vars in an environment variable or from a third party that can be easily accessed headlessly without needing to completely redploy the frontend. IN case we want to use a different oracle for pricing/etc
 
 import { findAssociatedTokenAddress } from "../utils/tokens";
 
@@ -33,12 +56,14 @@ const PokemonList = [
   new Pokemon(
     "Kyogre",
     KyogreSprite,
-    "Ekm3dm2Fq3ac6ub1XfHrDGGLGH9UT2WZEVPCqpuqaSbj" // this is the mint address
+    "Ekm3dm2Fq3ac6ub1XfHrDGGLGH9UT2WZEVPCqpuqaSbj", // this is the mint address
+    1 // This is the price relative to the other one
   ),
   new Pokemon(
     "Groudon",
     GroudonSprite,
-    "5QeyMtYSoxYwXkfCNCamXPq1arPNreNd4nm4PCeodLaB" // this is the mint
+    "5QeyMtYSoxYwXkfCNCamXPq1arPNreNd4nm4PCeodLaB", // this is the mint
+    2 // This is the price relative to the other one
   ),
 ];
 
@@ -128,9 +153,9 @@ export default function Home() {
 
     let connection = getConnection();
 
-    let ata = await splToken.Token.getAssociatedTokenAddress(
-      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-      splToken.TOKEN_PROGRAM_ID,
+    let ata = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
       new PublicKey(pokemonB.tokenAddress),
       new PublicKey(walletAddress.toString())
     );
@@ -170,9 +195,9 @@ export default function Home() {
     let connection = getConnection();
     console.log("Checking tokens for address: ", walletAddress);
 
-    let ata = await splToken.Token.getAssociatedTokenAddress(
-      splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-      splToken.TOKEN_PROGRAM_ID,
+    let ata = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
       new PublicKey(pokemonA.tokenAddress),
       walletAddress
     );
@@ -204,24 +229,28 @@ export default function Home() {
     );
   };
 
-  const tryMakeTokenSwap = async (walletAddress: PhantomProvider) => {
+  const tryExchangeTokens = async (
+    swapAmount: number,
+    walletAddress: PhantomProvider
+  ) => {
+    if (!provider?.publicKey) return;
     let connection = getConnection();
     let mintSigner: Keypair = Keypair.fromSecretKey(Uint8Array.from(admin));
 
     let fromTokenMintAddress: string = pokemonA.tokenAddress;
     let toTokenMintAddress: string = pokemonB.tokenAddress;
 
-    let fromTokenMint = new splToken.Token(
+    let fromTokenMint = new Token(
       connection,
       new PublicKey(fromTokenMintAddress),
-      splToken.TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
       mintSigner
     );
 
-    let toTokenMint = new splToken.Token(
+    let toTokenMint = new Token(
       connection,
       new PublicKey(toTokenMintAddress),
-      splToken.TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
       mintSigner
     );
 
@@ -233,6 +262,52 @@ export default function Home() {
       walletAddress.publicKey as PublicKey
     );
 
+    let vault_a_key = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      mint_a_pubkey,
+      ebPDA,
+      true
+    );
+    let vault_b_key = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      mint_b_pubkey,
+      ebPDA,
+      true
+    );
+
+    let exchangeIdx = Buffer.from(new Uint8Array([3]));
+    // let's do some error checking to make sure swapAmount is not more than the person can do
+    const swapAmountBuff = Buffer.from(
+      new Uint8Array(new BN(swapAmount * 10 ** 6).toArray("le", 8))
+    );
+    let exchangeIx = new TransactionInstruction({
+      keys: [
+        { pubkey: ebPDA, isSigner: false, isWritable: true },
+        { pubkey: vault_a_key, isSigner: false, isWritable: true },
+        { pubkey: vault_b_key, isSigner: false, isWritable: true },
+        { pubkey: provider?.publicKey!!, isSigner: true, isWritable: false },
+        { pubkey: fromTokenAccount.address, isSigner: false, isWritable: true },
+        { pubkey: toTokenMint.publicKey, isSigner: false, isWritable: true },
+        { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
+        { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
+        { pubkey: oracleKey, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      programId: EB_PROGRAM_ID,
+      data: Buffer.concat([exchangeIdx, swapAmountBuff]),
+    });
+
+    let exchangeTx = new Transaction();
+    exchangeTx.add(exchangeIx);
+    exchangeTx.feePayer = provider?.publicKey;
+    let signed = await provider?.signTransaction(exchangeTx);
+    addLog("Got signature, submitting transaction");
+    let signature = await connection.sendRawTransaction(signed!!.serialize());
+    addLog("Submitted transaction " + signature + ", awaiting confirmation");
+    await connection.confirmTransaction(signature);
+    addLog("Transaction " + signature + " confirmed");
     // setUserMaxAmountA(fromTokenAccountBalance.value.uiAmount!!);
   };
 
@@ -249,7 +324,10 @@ export default function Home() {
     }
   };
 
-  const tryExchangeTokens = async () => {};
+  // useEffect(() => {
+  //   let b_amount = amountA * a_to_b_ratio;
+  //   setAmountB(b_amount);
+  // }, [amountA]);
 
   const renderNotConnectedContainer = () => {
     return (
@@ -351,7 +429,14 @@ export default function Home() {
                   htmlFor="amountA"
                   className="flex text-md justify-end font-medium text-kyogre-gray mx-3 md:mx-6 py-2 "
                 >
-                  <button onClick={() => setAmountA(userMaxAmountA)}>
+                  <button
+                    onClick={() => {
+                      setAmountA(userMaxAmountA);
+                      let b_amount =
+                        userMaxAmountA * (pokemonB.price / pokemonA.price);
+                      setAmountB(b_amount);
+                    }}
+                  >
                     Max:{" "}
                     <span className="underline underline-offset-2 hover:text-white">
                       {userMaxAmountA}
@@ -365,10 +450,13 @@ export default function Home() {
                 className="amount-input"
                 placeholder="0"
                 value={amountA ? amountA : ""}
-                onChange={
-                  (ev: React.ChangeEvent<HTMLInputElement>): void =>
-                    setAmountA(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
-                }
+                onChange={(ev: React.ChangeEvent<HTMLInputElement>): void => {
+                  setAmountA(+ev.target.value); // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
+                  // based on the oracle price, set the other token's amount necessary for this amount
+                  let b_amount =
+                    +ev.target.value * (pokemonB.price / pokemonA.price);
+                  setAmountB(b_amount);
+                }}
                 required
               />
             </div>
@@ -458,10 +546,14 @@ export default function Home() {
                 className="amount-input"
                 placeholder="0"
                 value={amountB ? amountB : ""}
-                onChange={
-                  (ev: React.ChangeEvent<HTMLInputElement>): void =>
-                    setAmountB(+ev.target.value) // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
-                }
+                onChange={(ev: React.ChangeEvent<HTMLInputElement>): void => {
+                  setAmountB(+ev.target.value); // Apparently + is the unary operator and is a cooler version of parseInt xD https://stackoverflow.com/questions/14667713/how-to-convert-a-string-to-number-in-typescript
+                  // based on the oracle price, set the other token's amount necessary for this amount
+                  let a_amount =
+                    +ev.target.value *
+                    ((1.0 * pokemonA.price) / pokemonB.price);
+                  setAmountA(a_amount);
+                }}
                 required
               />
             </div>

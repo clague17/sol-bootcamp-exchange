@@ -45,7 +45,6 @@ pub fn process(
     let customer_ai = next_account_info(accounts_iter)?;
     let customer_from = next_account_info(accounts_iter)?;
     let customer_to = next_account_info(accounts_iter)?;
-    let admin_ai = next_account_info(accounts_iter)?;
     let mint_a_ai = next_account_info(accounts_iter)?;
     let mint_b_ai = next_account_info(accounts_iter)?;
     let oracle = next_account_info(accounts_iter)?;
@@ -156,7 +155,7 @@ pub fn process(
     let (_, eb_bump) = Pubkey::find_program_address(
         &[
             b"eb_pda",
-            admin_ai.key.as_ref(),
+            exchange_booth.admin.as_ref(),
             mint_a_ai.key.as_ref(),
             mint_b_ai.key.as_ref()
         ],
@@ -185,7 +184,7 @@ pub fn process(
         ],
         &[&[
             b"eb_pda",
-            admin_ai.key.as_ref(),
+            exchange_booth.admin.as_ref(),
             mint_a_ai.key.as_ref(),
             mint_b_ai.key.as_ref(),
             &[eb_bump]
