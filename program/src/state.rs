@@ -12,7 +12,7 @@ pub struct ExchangeBooth {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
-pub struct ExchangeRate {
-    pub a_to_b: f64,
-    pub b_to_a: f64
+pub struct Oracle {
+    pub token_amount1: u64,
+    pub token_amount2: u64
 }

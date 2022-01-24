@@ -22,6 +22,10 @@ import { writeFile, readFile } from "fs/promises";
 import { getMint } from "./util";
 // Debug niceties
 const initTokensFilePath = "../debug_utils/init_token_accounts.json";
+const initOracleFilePath = "../debug_utils/init_oracle_account.json";
+
+const tokenAccountsData = require("../debug_utils/init_token_accounts.json");
+const oracleAccountData = require("../debug_utils/init_oracle_account.json");
 
 const ORACLE_PROGRAM_ID = new PublicKey(
   "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
@@ -34,20 +38,18 @@ const DEV_NET = clusterApiUrl("devnet");
 const CONNECTION = LOCAL_NET;
 
 // Necessary constants:
-const oracleKey = new PublicKey("AE3nhQH1hNYA198w5yWoMzxtmyU4QD5Pad3dCgdpyPQN"); // This points to the actual buffer account where the oracle data is held
+const oracleKey = new PublicKey(
+  oracleAccountData.oracle_buffer_address as string
+); // This points to the actual buffer account where the oracle data is held
 const oracleProgramId = new PublicKey(
-  "ETgEKARSAfRtNsfuCLLxTRGrZjeUDMoqKfBim3SVRJo4"
+  "AwrHP2q75CQKvdrKDhfk9nVjjvwVCpmirM5fACYBQGuL"
 );
 const EB_PROGRAM_ID = new PublicKey(
   "29e799E2EERqux5qDh5YHzXNdTKa3tBbjXSMHx1g5DL2"
 );
 
-const mint_a_pubkey = new PublicKey(
-  "GDzb2xqVMKpvGCPvn6fbF8fUM7v2esLgfEHTZaviMDWw"
-);
-const mint_b_pubkey = new PublicKey(
-  "4gKh39rZmrB71xf34tAVwxfpZaSatm4Yvv55A5DqXYkS"
-);
+const mint_a_pubkey = new PublicKey(tokenAccountsData.mint_a as string);
+const mint_b_pubkey = new PublicKey(tokenAccountsData.mint_b as string);
 
 const SWAP_FEE = 0.2; // will definitely have to play with the decimals on this
 const INSTRUCTION_IDX = 0; // The instruction that you want the rust program to run
@@ -288,7 +290,11 @@ const initializeVaults = async (
   return [vault_a_key, vault_b_key];
 };
 
-const createOracle = async (connection: Connection, adminWallet: Keypair) => {
+const createOracle = async (
+  connection: Connection,
+  adminWallet: Keypair,
+  debug: number
+) => {
   console.log("Creating the Oracle ...");
   const echoBuffer = new Keypair();
 
@@ -300,10 +306,16 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
   // // create the data
   // let price_data = Buffer.concat([tokenAmountA, tokenAmountB]);
 
-  const ratio = Buffer.from(new Uint8Array(new BN(0.5).toArray("le", 8)));
   const echoInstruction = Buffer.from(new Uint8Array([0]));
+  const tokenAmount1 = 2 * 10 ** 6;
+  const tokenAmount2 = 3 * 10 ** 6;
+  const oracleData = Buffer.concat([
+    Buffer.from(new Uint8Array(new BN(tokenAmount1).toArray("le", 8))),
+    Buffer.from(new Uint8Array(new BN(tokenAmount2).toArray("le", 8))),
+  ]);
+
   const dataLen = Buffer.from(
-    new Uint8Array(new BN(ratio.length).toArray("le", 4))
+    new Uint8Array(new BN(oracleData.length).toArray("le", 4))
   );
 
   // create the account
@@ -311,9 +323,11 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
     fromPubkey: adminWallet.publicKey,
     newAccountPubkey: echoBuffer.publicKey,
     /** Amount of lamports to transfer to the created account */
-    lamports: await connection.getMinimumBalanceForRentExemption(ratio.length),
+    lamports: await connection.getMinimumBalanceForRentExemption(
+      oracleData.length
+    ),
     /** Amount of space in bytes to allocate to the created account */
-    space: ratio.length,
+    space: oracleData.length,
     /** Public key of the program to assign as the owner of the created account */
     programId: oracleProgramId,
   });
@@ -327,7 +341,7 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
       },
     ],
     programId: oracleProgramId,
-    data: Buffer.concat([echoInstruction, dataLen, ratio]),
+    data: Buffer.concat([echoInstruction, dataLen, oracleData]),
   });
 
   const tx = new Transaction();
@@ -343,6 +357,7 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
       commitment: "confirmed",
     }
   );
+
   console.log(
     `Init Exchange Booth Transaction Confirmed: https://explorer.solana.com/tx/${txid}?cluster=devnet`
   );
@@ -350,7 +365,20 @@ const createOracle = async (connection: Connection, adminWallet: Keypair) => {
   let data = (
     await connection.getAccountInfo(echoBuffer.publicKey, "confirmed")
   )?.data;
-  console.log("Echo Buffer Text:", data?.toString());
+  console.log("Echo Buffer Text:", data?.toString("utf16le"));
+
+  if (debug == 1) {
+    let payload = {
+      oracle_buffer_address: echoBuffer.publicKey.toBase58(),
+      oracle_buffer_data: data?.toString("utf16le"),
+    };
+
+    writeFile(initOracleFilePath, JSON.stringify(payload))
+      .then(() => console.log(`Wrote Oracle Info to ${initOracleFilePath}\n`))
+      .catch((err) =>
+        console.log(`Error writing Oracle Info to ${initOracleFilePath}\n`)
+      );
+  }
 
   // send the transaction, keeping track of that oracle key
 };
@@ -382,16 +410,17 @@ const logBalances = async (
       mint: mint_b_pubkey,
     })
   ).value[0].account.data.parsed.info;
+
   console.log(
     "userToken1Account balance:",
-    userToken1AccountInfo.tokenAmount.amount
+    userToken1AccountInfo.tokenAmount.uiAmount
   );
   console.log(
     "userToken2ccount balance:",
-    userToken2AccountInfo.tokenAmount.amount
+    userToken2AccountInfo.tokenAmount.uiAmount
   );
-  console.log("vault1Account balance:", vault1AccountInfo.tokenAmount.amount);
-  console.log("vault2Account balance:", vault2AccountInfo.tokenAmount.amount);
+  console.log("vault1Account balance:", vault1AccountInfo.tokenAmount.uiAmount);
+  console.log("vault2Account balance:", vault2AccountInfo.tokenAmount.uiAmount);
 };
 
 const adminDepositTokensManual = async (
@@ -401,7 +430,7 @@ const adminDepositTokensManual = async (
   console.log("Execute Deposit Tokens");
 
   console.log("Creating deposits instruction...");
-  const depositAmount = 2;
+  const depositAmount = 100;
 
   let depositIdx = Buffer.from(new Uint8Array([1]));
 
@@ -442,11 +471,11 @@ const adminDepositTokensManual = async (
   console.log("vaults: ", vault_a_key, vault_b_key);
 
   let adminATokenAccount = new PublicKey(
-    "4B8DnJeLAD8yzC229p3ErVcTAvwaqDc1QQrUFnwboP4g"
+    tokenAccountsData.admin_token_a_account as string
   );
 
   let adminBTokenAccount = new PublicKey(
-    "63yhPxt5XEwRZntStvjDqTHGK53RhUDpTfS8SQDVAn4Q"
+    tokenAccountsData.admin_token_b_account as string
   );
 
   console.log("Sending the deposit instruction!");
@@ -468,15 +497,13 @@ const adminDepositTokensManual = async (
   });
 
   // make the tx
-  let exchangeTx = new Transaction();
-  exchangeTx.add(depositIx);
-
-  console.log("Sending transaction...");
+  let depositTx = new Transaction();
+  depositTx.add(depositIx);
 
   // send tx
-  let exchangeTxid = await sendAndConfirmTransaction(
+  let depositTxID = await sendAndConfirmTransaction(
     connection,
-    exchangeTx,
+    depositTx,
     [adminWallet],
     {
       skipPreflight: true,
@@ -486,7 +513,7 @@ const adminDepositTokensManual = async (
 
   // tx url on devnet
   console.log(`Deposit of ${depositAmount} to vault_a and vault_b confirmed:`);
-  console.log(`https://explorer.solana.com/tx/${exchangeTxid}?cluster=devnet`);
+  console.log(`https://explorer.solana.com/tx/${depositTxID}?cluster=devnet`);
 
   logBalances(connection, adminWallet.publicKey, ebPDA);
 };
@@ -517,17 +544,19 @@ const adminDepositTokens = async (
   );
 };
 
-const transferTokens = async (
+const exchangeTokens = async (
   connection: Connection,
   adminWallet: Keypair,
   bobWallet: Keypair
 ) => {
   const exchangeIdx = Buffer.from(new Uint8Array([3]));
-  const swapAmount = Buffer.from(
-    new Uint8Array(new BN(3 * 10 ** 6).toArray("le", 8)) // 6 decimals for both mints :)
+  const swapAmount = 2;
+
+  const swapAmountBuff = Buffer.from(
+    new Uint8Array(new BN(swapAmount * 10 ** 6).toArray("le", 8)) // 6 decimals for both mints :)
   );
 
-  console.log("Execute Transfer tokens!");
+  console.log("Execute Exchange tokens!");
   console.log("Finding eb PDA...");
 
   let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
@@ -560,30 +589,31 @@ const transferTokens = async (
   );
 
   let bobFromTokenAccount = new PublicKey(
-    "3ws2vWH9tDKytJpLrKCZC7enWqbUMxLJwqDuofRuwdaT"
+    tokenAccountsData.bob_token_a_account as string
   );
 
   let bobToTokenAccount = new PublicKey(
-    "EY8swj1gUM8Bv88Jym84vtXLvFjALa2Krb7mSMLHvFcv"
+    tokenAccountsData.bob_token_b_account as string
   );
 
   console.log("Creating transaction instruction...");
 
   let exchangeIx = new TransactionInstruction({
     keys: [
-      { pubkey: ebPDA, isSigner: false, isWritable: false },
+      { pubkey: ebPDA, isSigner: false, isWritable: true },
+      { pubkey: vault_a_key, isSigner: false, isWritable: true },
+      { pubkey: vault_b_key, isSigner: false, isWritable: true },
       { pubkey: bobWallet.publicKey, isSigner: true, isWritable: false },
       { pubkey: bobFromTokenAccount, isSigner: false, isWritable: true },
       { pubkey: bobToTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: vault_a_key, isSigner: false, isWritable: true },
-      { pubkey: vault_b_key, isSigner: false, isWritable: true },
+      { pubkey: adminWallet.publicKey, isSigner: false, isWritable: false },
       { pubkey: mint_a_pubkey, isSigner: false, isWritable: false },
       { pubkey: mint_b_pubkey, isSigner: false, isWritable: false },
       { pubkey: oracleKey, isSigner: false, isWritable: false },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     programId: EB_PROGRAM_ID,
-    data: Buffer.concat([exchangeIdx, swapAmount]),
+    data: Buffer.concat([exchangeIdx, swapAmountBuff]),
   });
 
   // make the tx
@@ -615,7 +645,7 @@ const main = async () => {
   const shouldInitExchangeBooth = parseInt(args[1]);
   const shouldCreateOracle = parseInt(args[2]);
   const shouldDepositTokens = parseInt(args[3]);
-  const shouldTransferTokens = parseInt(args[4]);
+  const shouldExchangeTokens = parseInt(args[4]);
   const debug = parseInt(args[5]);
   // const shouldInitTokens = parseInt(args[1]);
   // const echo = args[1];
@@ -626,7 +656,7 @@ const main = async () => {
     shouldInitExchangeBooth: ${shouldInitExchangeBooth == 1}
     shouldCreateOracle: ${shouldCreateOracle == 1}
     shouldDepositTokens: ${shouldDepositTokens == 1}
-    shouldTransferTokens: ${shouldTransferTokens == 1}
+    shouldTransferTokens: ${shouldExchangeTokens == 1}
     debug: ${debug == 1}\n`
   );
 
@@ -645,7 +675,7 @@ const main = async () => {
   }
 
   if (shouldCreateOracle === 1) {
-    await createOracle(connection, adminWallet);
+    await createOracle(connection, adminWallet, debug);
     return;
   }
 
@@ -654,8 +684,8 @@ const main = async () => {
     return;
   }
 
-  if (shouldTransferTokens === 1) {
-    await transferTokens(connection, adminWallet, bobWallet);
+  if (shouldExchangeTokens === 1) {
+    await exchangeTokens(connection, adminWallet, bobWallet);
     return;
   }
 
@@ -692,7 +722,7 @@ const main = async () => {
     EB_PROGRAM_ID
   );
 
-  console.log("Exchange booth address: ", ebPDA);
+  console.log("Exchange booth address: ", ebPDA.toBase58());
 
   const [vault_a_key, vault_b_key] = await initializeVaults(
     connection,
@@ -701,7 +731,6 @@ const main = async () => {
     mint_b,
     ebPDA
   );
-  return;
   // Now we have initialized the two vaults!
 
   // Creating the Exchange Booth Instruction

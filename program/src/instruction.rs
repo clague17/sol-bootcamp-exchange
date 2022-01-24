@@ -66,7 +66,7 @@ pub enum ExchangeBoothInstruction {
 
 
     Exchange {
-        amount: f64
+        amount: u64
     },
     CloseExchangeBooth {
         // TODO

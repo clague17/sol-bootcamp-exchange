@@ -81,6 +81,8 @@ pub fn process(
         ]
     )?;
 
+    msg!("Look here Exchange Booth! {:?}", eb_ai.key);
+
     // finally serialize the struct into the space allocated by the system instruction
     let eb = ExchangeBooth {
         admin: *admin.key,
