@@ -621,12 +621,14 @@ export default function Home() {
           {!walletAddress && renderNotConnectedContainer()}
         </div>
         {walletAddress && renderSwapContainer()}
-        <div className="flex justify-center my-4">
-          <div className="flex text-white bg-gradient-radial from-blue-600 to-blue-900 p-3 rounded-xl">
+        <div className="flex justify-center my-10">
+          <button>
             <Link href="first_time">
-              <p>First time here?</p>
+              <div className="flex text-white bg-gradient-radial from-blue-600 to-blue-900 p-3 rounded-xl hover:bg-kyogre-blue-dark">
+                <p>First time here?</p>
+              </div>
             </Link>
-          </div>
+          </button>
         </div>
 
         <footer className="flex mt-10 items-center justify-center w-full fixed bottom-0 left-0">
