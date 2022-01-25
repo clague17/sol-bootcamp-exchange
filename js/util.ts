@@ -5,12 +5,16 @@ import { TOKEN_PROGRAM_ID, MintLayout } from "@solana/spl-token";
 const adminBytes = require("../debug_utils/admin_wallet.json");
 const bobBytes = require("../debug_utils/bob_wallet.json");
 
+const devnetAdminBytes = require("../devnet_debug_utils/admin_wallet.json");
+const devnetBobBytes = require("../devnet_debug_utils/bob_wallet.json");
+
 // Hardcoding this here because I want to be able to keep the same admin across testing.
 // OBVIOUSLY DO NOT DO THIS!
 const Admin = Keypair.fromSecretKey(Uint8Array.from(adminBytes));
 const Bob = Keypair.fromSecretKey(Uint8Array.from(bobBytes));
-
-export { Admin, Bob };
+const DevnetAdmin = Keypair.fromSecretKey(Uint8Array.from(devnetAdminBytes));
+const DevnetBob = Keypair.fromSecretKey(Uint8Array.from(devnetBobBytes));
+export { Admin, Bob, DevnetAdmin, DevnetBob };
 
 import {
   TokenAccountNotFoundError,

@@ -17,22 +17,27 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 
-import { Admin, Bob } from "./util";
+import { Admin, Bob, DevnetAdmin, DevnetBob } from "./util";
 import { writeFile, readFile } from "fs/promises";
 import { getMint } from "./util";
 // Debug niceties
-const initTokensFilePath = "../debug_utils/init_token_accounts.json";
-const initOracleFilePath = "../debug_utils/init_oracle_account.json";
-const ebFilePath = "../debug_utils/init_eb_account.json";
+// var initTokensFilePath = "../debug_utils/init_token_accounts.json";
+// var initOracleFilePath = "../debug_utils/init_oracle_account.json";
+// var ebFilePath = "../debug_utils/init_eb_account.json";
 
-const tokenAccountsData = require("../debug_utils/init_token_accounts.json");
-const oracleAccountData = require("../debug_utils/init_oracle_account.json");
+// Comment this out if not in devnet!!!!!!!!!!!!!!!!!!!
+var initTokensFilePath = "../devnet_debug_utils/init_token_accounts.json";
+var initOracleFilePath = "../devnet_debug_utils/init_oracle_account.json";
+var ebFilePath = "../devnet_debug_utils/init_eb_account.json";
+
+const tokenAccountsData = require("../devnet_debug_utils/init_token_accounts.json");
+const oracleAccountData = require("../devnet_debug_utils/init_oracle_account.json");
 const { BN } = require("bn.js");
 
 // Quick changing to dev and local nets
 const LOCAL_NET = "http://127.0.0.1:8899";
 const DEV_NET = clusterApiUrl("devnet");
-const CONNECTION = LOCAL_NET;
+const CONNECTION = DEV_NET;
 
 // Necessary constants:
 const oracleKey = new PublicKey(
@@ -46,7 +51,9 @@ const EB_PROGRAM_ID = new PublicKey(
 );
 
 const mint_a_pubkey = new PublicKey(tokenAccountsData.mint_a as string);
+console.log("mint a address: ", tokenAccountsData.mint_a);
 const mint_b_pubkey = new PublicKey(tokenAccountsData.mint_b as string);
+console.log("mint b address: ", tokenAccountsData.mint_b);
 
 const SWAP_FEE = 0.2; // will definitely have to play with the decimals on this
 const INSTRUCTION_IDX = 0; // The instruction that you want the rust program to run
@@ -583,32 +590,6 @@ const adminDepositTokensManual = async (
   logBalances(connection, adminWallet.publicKey, ebPDA);
 };
 
-const adminDepositTokens = async (
-  connection: Connection,
-  adminWallet: Keypair,
-  amount: number
-) => {
-  let [ebPDA, ebBumpSeed] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from("eb_pda"),
-      adminWallet.publicKey.toBuffer(),
-      mint_a_pubkey.toBuffer(),
-      mint_b_pubkey.toBuffer(),
-    ],
-    EB_PROGRAM_ID
-  );
-
-  let [vault_a_pda, vault_a_bump] = await PublicKey.findProgramAddress(
-    [
-      Buffer.from("vault_a"),
-      adminWallet.publicKey.toBuffer(),
-      mint_a_pubkey.toBuffer(),
-      ebPDA.toBuffer(),
-    ],
-    EB_PROGRAM_ID
-  );
-};
-
 const exchangeTokens = async (
   connection: Connection,
   adminWallet: Keypair,
@@ -729,9 +710,9 @@ const main = async () => {
 
   const connection = new Connection(CONNECTION);
 
-  var adminWallet = Admin;
+  var adminWallet = DevnetAdmin;
 
-  var bobWallet = Bob; // bob is the user
+  var bobWallet = DevnetBob; // bob is the user
   // TODO: replace this with a phantom wallet!
   // Note: the admin IS the mint authority in this exercise
 
@@ -869,7 +850,7 @@ const main = async () => {
 
   if (debug == 1) {
     let payload = {
-      exchange_buffer_address: ebPDA.toBase58(),
+      exchange_booth_address: ebPDA.toBase58(),
     };
 
     writeFile(ebFilePath, JSON.stringify(payload))
