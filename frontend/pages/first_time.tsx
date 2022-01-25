@@ -93,39 +93,35 @@ export default function FirstTime() {
   }, []);
 
   const tryMintGroudon = async () => {
-    console.log("Tryna mint 5 groudon");
+    console.log("Tryna mint 5 kyogre");
 
     let mintSigner: Keypair = Keypair.fromSecretKey(Uint8Array.from(admin));
 
-    let groudonMintAddress: string = PokemonList[1].tokenAddress;
-    let groudonMint = new Token(
+    let kyogreMintAddress: string = PokemonList[0].tokenAddress;
+    let kyogreMint = new Token(
       connection,
-      new PublicKey(groudonMintAddress),
+      new PublicKey(kyogreMintAddress),
       TOKEN_PROGRAM_ID,
       mintSigner
     );
 
-    const userGroudonTokenAccount = await groudonMint.getOrCreateAssociatedAccountInfo(
+    const userGroudonTokenAccount = await kyogreMint.getOrCreateAssociatedAccountInfo(
       provider!!.publicKey as PublicKey
     );
 
     toast.promise(
-      groudonMint.mintTo(
+      kyogreMint.mintTo(
         userGroudonTokenAccount.address,
         mintSigner,
         [mintSigner],
         5 * MINT_DECIMALS
       ),
       {
-        success: "Success! Enjoy your 5 Groudon!",
+        success: "Success! Enjoy your 5 Kyogre!",
         error: "Error",
         loading: "Loading Transaction ...",
       },
       {
-        style: {
-          background: "#363636",
-          color: "#fff",
-        },
         success: {
           duration: 5000, // overwrite from the standard 2000
         },

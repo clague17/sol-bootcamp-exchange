@@ -320,10 +320,6 @@ export default function Home() {
         loading: "Loading Confirmation",
       },
       {
-        style: {
-          background: "#363636",
-          color: "#fff",
-        },
         success: {
           duration: 5000, // overwrite from the standard 2000
         },
