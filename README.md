@@ -16,6 +16,7 @@ I coded it up on Rust through a bootcamp
 - [ ] Add animation for the linear ease when clicking the swap token direction button. I like how Orca does it visually.
 - [ ] Handle the case where a user connects a wallet that has no ATAs for the two tokens -> potentially add an alert to redirect to another place where we can create one for them
 - [ ] How about we don't hardcode the exchange rate and get that straight from the oracle instead :) That just requires reading in the data from the echoBuffer on the frontend
+- [ ] No reason to check associated token account each time the swap token button is clicked. Should just persist that with a state var.
 
 #### TODO Rust:
 

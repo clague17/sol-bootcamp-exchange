@@ -92,7 +92,7 @@ export default function FirstTime() {
     return () => window.removeEventListener("load", onLoad);
   }, []);
 
-  const tryMintGroudon = async () => {
+  const tryMintKyogre = async () => {
     console.log("Tryna mint 5 kyogre");
 
     let mintSigner: Keypair = Keypair.fromSecretKey(Uint8Array.from(admin));
@@ -142,10 +142,10 @@ export default function FirstTime() {
     return <button onClick={connectWallet}>Connect Wallet on Devnet</button>;
   };
 
-  const renderMintGroudonBtn = () => {
+  const renderMintKyogreBtn = () => {
     return (
-      <button onClick={tryMintGroudon}>
-        <p>Mint Groudon</p>
+      <button onClick={tryMintKyogre}>
+        <p>Mint Kyogre</p>
       </button>
     );
   };
@@ -226,7 +226,7 @@ export default function FirstTime() {
                     </button>
                   </div>
                   <div className="flex text-white bg-gradient-radial from-kyogre-blue-dark to-kyogre-blue-light px-3 mx-4 rounded-xl">
-                    {walletAddress && renderMintGroudonBtn()}
+                    {walletAddress && renderMintKyogreBtn()}
                     {!walletAddress && renderConnectWalletBtn()}
                   </div>
                 </div>
