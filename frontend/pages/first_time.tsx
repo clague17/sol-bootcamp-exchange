@@ -10,18 +10,13 @@ import KyogreSprite from "../assets/kyogre-sprite-motion.gif";
 import Pokemon from "../components/Pokemon";
 import { PhantomProvider } from "../utils/phantom";
 import toast, { Toaster } from "react-hot-toast";
-const admin = require("../../debug_utils/admin_wallet.json");
-const tokenAccountsData = require("../../debug_utils/init_token_accounts.json");
+// const admin = require("../../debug_utils/admin_wallet.json");
+const admin = require("../../devnet_debug_utils/admin_wallet.json");
 
-import {
-  Connection,
-  sendAndConfirmTransaction,
-  Transaction,
-  TransactionInstruction,
-  Keypair,
-  PublicKey,
-  LAMPORTS_PER_SOL,
-} from "@solana/web3.js";
+// const tokenAccountsData = require("../../debug_utils/init_token_accounts.json");
+const tokenAccountsData = require("../../devnet_debug_utils/init_token_accounts.json");
+
+import { Connection, clusterApiUrl, Keypair, PublicKey } from "@solana/web3.js";
 
 import {
   Token,
@@ -60,7 +55,9 @@ const getProvider = (): PhantomProvider | undefined => {
 
 export default function FirstTime() {
   const provider = getProvider();
-  const rpcHost = "http://127.0.0.1:8899/";
+  //   const rpcHost = "http://127.0.0.1:8899/";
+  const rpcHost = clusterApiUrl("devnet");
+
   // Create a new connection object
   const connection = new Connection(rpcHost!!);
   const [walletAddress, setWalletAddress] = useState<PublicKey | null>(null);

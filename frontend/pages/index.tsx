@@ -14,18 +14,18 @@ import Link from "next/link";
 import { PhantomProvider } from "../utils/phantom";
 import toast, { Toaster } from "react-hot-toast";
 const { BN } = require("bn.js");
-const admin = require("../../debug_utils/admin_wallet.json");
-const tokenAccountsData = require("../../debug_utils/init_token_accounts.json");
-const oracleAccountData = require("../../debug_utils/init_oracle_account.json");
-const a_to_b_ratio = 1.0 / 2; // 2 A for 3 B! b is .33 less valuable
+const admin = require("../../devnet_debug_utils/admin_wallet.json");
+const tokenAccountsData = require("../../devnet_debug_utils/init_token_accounts.json");
+const oracleAccountData = require("../../devnet_debug_utils/init_oracle_account.json");
+const ebPDAData = require("../../devnet_debug_utils/init_eb_account.json");
 
 // Solana imports!
 import {
   Connection,
-  sendAndConfirmTransaction,
   Transaction,
   TransactionInstruction,
   Keypair,
+  clusterApiUrl,
   PublicKey,
 } from "@solana/web3.js";
 
@@ -36,7 +36,7 @@ import {
 } from "@solana/spl-token";
 
 // config constants for ease of use:
-const ebPDA = new PublicKey("Auw3QzqeyNKEWUJy2wZe4c3pyiTKqc5qtoga5ZmvHGiN"); // The exchange booth pda
+const ebPDA = new PublicKey(ebPDAData.exchange_booth_address); // The exchange booth pda
 const mint_a_pubkey = new PublicKey(tokenAccountsData.mint_a as string);
 const mint_b_pubkey = new PublicKey(tokenAccountsData.mint_b as string);
 const oracleKey = new PublicKey(
@@ -98,7 +98,9 @@ const getProvider = (): PhantomProvider | undefined => {
 
 export default function Home() {
   const provider = getProvider();
-  const rpcHost = "http://127.0.0.1:8899/";
+  // const rpcHost = "http://127.0.0.1:8899/";
+  const rpcHost = clusterApiUrl("devnet");
+
   // Create a new connection object
   const connection = new Connection(rpcHost!!);
   const [logs, setLogs] = useState<string[]>([]);
@@ -160,7 +162,16 @@ export default function Home() {
       new PublicKey(walletAddress.toString())
     );
 
-    let ata_ai = await connection.getAccountInfo(ata);
+    let ata_ai = await connection
+      .getAccountInfo(ata)
+      .then((res) => res)
+      .catch((err) =>
+        console.log(
+          `Oopsie, looks like account ${walletAddress.toString()} doesn't have a tokenAccount for the ${
+            pokemonB.name
+          } token with address ${pokemonB.tokenAddress}`
+        )
+      );
 
     if (!ata_ai) {
       console.log(
